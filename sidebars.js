@@ -14,6 +14,67 @@ module.exports = {
     },
     {
       type: "category",
+      label: "Nexis dApps",
+      collapsed: false,
+      items: [
+        {
+          type: "category",
+          label: "Nexis Bridge",
+          collapsed: true,
+          items: [
+            "ns-overview",
+            "ns-glossary",
+          ],
+        },
+        {
+          type: "category",
+          label: "Nexis Web Wallet",
+          collapsed: true,
+          items: [
+            "ns-overview",
+            "ns-glossary",
+          ],
+        },
+        {
+          type: "category",
+          label: "Nexis Swap",
+          collapsed: true,
+          items: [
+            "ns-overview",
+            "ns-glossary",
+          ],
+        },
+        {
+          type: "category",
+          label: "Nexis Names Service",
+          collapsed: false,
+          items: [
+            "graph-node",
+            "subgraph"
+          ],
+        },
+        {
+          type: "category",
+          label: "Nexis Safe",
+          collapsed: false,
+          items: [
+            "graph-node",
+            "subgraph"
+          ],
+        },
+        {
+          type: "category",
+          label: "Nexis Testnet Faucet",
+          collapsed: false,
+          items: [
+            "graph-node",
+            "subgraph"
+          ],
+        },
+      ],
+    },
+    {
+      type: "category",
       label: "Command Line Tools",
       // collapsed: false,
       items: [
