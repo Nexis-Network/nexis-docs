@@ -51,8 +51,8 @@ module.exports = {
     navbar: {
       logo: {
         alt: "Nexis Network Logo",
-        src: "img/logo-horizontal.svg",
-        srcDark: "img/logo-horizontal-dark.svg",
+        src: "https://raw.githubusercontent.com/Nexis-Network/Nexis-Brand-Kit/9c5784319e7dc0f145050f800c0fbb6f0b9aca42/Group%20(3).svg",
+        srcDark: "https://raw.githubusercontent.com/Nexis-Network/Nexis-Brand-Kit/9c5784319e7dc0f145050f800c0fbb6f0b9aca42/Group%20(3).svg",
       },
       items: [
         {

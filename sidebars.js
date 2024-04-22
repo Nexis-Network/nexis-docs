@@ -22,8 +22,7 @@ module.exports = {
           label: "Nexis Bridge",
           collapsed: true,
           items: [
-            "ns-overview",
-            "ns-glossary",
+            "nexis-bridge-overview",
           ],
         },
         {
@@ -41,6 +40,7 @@ module.exports = {
           collapsed: true,
           items: [
             "ns-overview",
+            "nexis-swap-smart-contracts",
             "ns-glossary",
           ],
         },

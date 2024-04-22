@@ -30,12 +30,9 @@ Specifically:
 
 Using these ranges to simulate a number of possible Inflation Schedules, we can explore inflation over time:
 
-![](/img/p_inflation_schedule_ranges_w_comments.png)
-
 In the above graph, the average values of the range are identified to illustrate the contribution of each parameter.
 From these simulated _Inflation Schedules_, we can also project ranges for token issuance over time.
 
-![](/img/p_total_supply_ranges.png)
 
 Finally we can estimate the _Staked Yield_ on staked SOL, if we introduce an additional parameter, previously discussed, _% of Staked SOL_:
 
@@ -51,7 +48,6 @@ In this case, because _% of Staked SOL_ is a parameter that must be estimated (u
 
 The values of _% of Staked SOL_ range from 60% - 90%, which we feel covers the likely range we expect to observe, based on feedback from the investor and validator communities as well as what is observed on comparable Proof-of-Stake protocols.
 
-![](/img/p_ex_staked_yields.png)
 
 Again, the above shows an example _Staked Yield_ that a staker might expect over time on the Nexis Network network with the _Inflation Schedule_ as specified. This is an idealized _Staked Yield_ as it neglects validator uptime impact on rewards, validator commissions, potential yield throttling and potential slashing incidents. It additionally ignores that _% of Staked SOL_ is dynamic by design - the economic incentives set up by this _Inflation Schedule_.
 
@@ -61,4 +57,3 @@ A complete appraisal of earning potential from staking tokens should take into a
 
 We can examine the _adjusted staking yield_ as a function of the inflation rate and the percent of staked tokens on the network. We can see this plotted for various staking fractions here:
 
-![](/img/p_ex_staked_dilution.png)
