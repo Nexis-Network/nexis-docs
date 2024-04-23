@@ -228,10 +228,11 @@ module.exports = {
     },
     {
       type: "category",
-      label: "Faucet",
+      label: "Faucets",
       collapsed: false,
       items: [
         'faucets',
+        'faucet'
       ],
     }
   ],
