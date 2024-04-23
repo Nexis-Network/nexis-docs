@@ -56,29 +56,30 @@ module.exports = {
       },
       items: [
         {
-          to: "cli",
-          label: "CLI",
+          to: "bridge",
+          label: "Bridge",
           position: "left",
         },
         {
-          to: "architecture",
-          label: "Architecture",
+          to: "swap",
+          label: "Swap",
           position: "left",
         },
         {
-          to: "operations",
-          label: "Operating a Validator",
+          to: "nameservice",
+          label: "Names",
           position: "left",
         },
         {
           label: "More",
           position: "left",
           items: [
-            { label: "Proposals", to: "proposals" },
-            {
-              href: "https://spl.nexis.network",
-              label: "Nexis Network Program Library",
-            },
+            { label: "Web Wallets", to: "wallet" },
+            { label: "Faucet", to: "faucet" },
+            // {
+            //   href: "https://spl.nexis.network",
+            //   label: "Nexis Network Program Library",
+            // },
           ],
         },
         {
