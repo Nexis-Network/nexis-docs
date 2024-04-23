@@ -228,12 +228,30 @@ module.exports = {
     },
     {
       type: "category",
+      label: "DEXs",
+      collapsed: false,
+      items: [
+        'dexs',
+        'swap'
+      ],
+    },
+    {
+      type: "category",
+      label: "Name Services",
+      collapsed: false,
+      items: [
+        'names',
+        'nameservice'
+      ],
+    },
+    {
+      type: "category",
       label: "Faucets",
       collapsed: false,
       items: [
         'faucets',
         'faucet'
       ],
-    }
+    },
   ],
 };
