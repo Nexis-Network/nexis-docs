@@ -1,7 +1,7 @@
 const math = require("remark-math");
 const katex = require("rehype-katex");
 module.exports = {
-  title: "Nexis Network Validator",
+  title: "Nexis Network Docs",
   tagline:
     "Nexis Network is an open source project implementing a new, high-performance, permissionless blockchain.",
   url: "https://docs.solanalabs.com",

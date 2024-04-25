@@ -137,3 +137,8 @@ footer .text--center {
 .docPage_node_modules-\@docusaurus-theme-classic-lib-theme-DocPage-Layout-styles-module{
   background-color: #060911;
 } 
+
+.docPage__5DB {
+  flex: 1 0;
+  background: #060911;
+}
