@@ -58,13 +58,13 @@ module.exports = {
         },
       ],
     },
-    algolia: {
-      // This API key is "search-only" and safe to be published
-      apiKey: "011e01358301f5023b02da5db6af7f4d",
-      appId: "FQ12ISJR4B",
-      indexName: "nexis",
-      contextualSearch: true,
-    },
+    // algolia: {
+    //   // This API key is "search-only" and safe to be published
+    //   apiKey: "011e01358301f5023b02da5db6af7f4d",
+    //   appId: "FQ12ISJR4B",
+    //   indexName: "nexis",
+    //   contextualSearch: true,
+    // },
     footer: {
       style: "dark",
       links: [
