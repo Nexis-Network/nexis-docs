@@ -1,0 +1,447 @@
+---
+title: Clusters
+---
+
+# Clusters
+
+<GuidesOther
+  id="nexis_network_clusters"
+  title="Nexis Network Clusters"
+  level={2}
+  isShow={false}
+/>
+
+Nexis Network maintains several different clusters with different purposes.
+
+Before you begin make sure you have first installed the Nexis Network command line tools
+
+Explorers:
+
+- http://nexscan.io/ Native explorer.
+- https://evm.nexscan.io/ EVM mainnet explorer.
+- https://testnet.nexscan.io/ EVM testnet explorer.
+
+## Testnet
+
+<table className="w-full border-collapse border border-slate-400 bg-white text-sm shadow-sm dark:border-slate-500 dark:bg-inherit">
+  <thead>
+    <tr>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        Space
+      </th>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        Native
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        RPC
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://testnet.nexis.network`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Websocket
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `wss://api.testnet.nexis.network`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Block Explorer
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `nexis airdrop 1 -u https://api.testnet.nexis.network --faucet-host
+        airdrop.testnet.nexis.network`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Faucet CLI
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `nexis airdrop 1 -u https://api.testnet.nexis.network --faucet-host
+        airdrop.testnet.nexis.network`
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table className="w-full border-collapse border border-slate-400 bg-white text-sm shadow-sm dark:border-slate-500 dark:bg-inherit">
+  <thead>
+    <tr>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        Space
+      </th>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        EVM
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        chainId
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `2370`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        ETH RPC
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://evm.testnet.nexscan.io/rpc`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        ETH Websocket
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `wss://api.testnet.nexscan.io/`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Block Explorer
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://evmexplorer.testnet.nexscan.io`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Block Explorer
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://explorer.testnet.nexscan.io` (V-encoded Legacy addresses)
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Faucet bot
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://t.me/nexis_network_faucet_bot`
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+- Testnet serves as a playground for anyone who wants to take Nexis Network for a test drive, as a user, token holder, app developer, or validator.
+- Application developers should target Testnet.
+- Potential validators should first target Testnet.
+- Key differences between Testnet and Mainnet:
+  - Testnet tokens are not real
+  - Testnet includes a token faucet for airdrops for application testing
+  - Testnet may be subject to ledger resets
+  - Testnet typically runs a newer software version than Mainnet Beta
+- Gossip entrypoint for Testnet: `bootstrap.testnet.nexis-network.com:8001`
+
+## Mainnet
+
+<table className="w-full border-collapse border border-slate-400 bg-white text-sm shadow-sm dark:border-slate-500 dark:bg-inherit">
+  <thead>
+    <tr>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        Space
+      </th>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        Native
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        RPC
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://api.nexscan.io`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Websocket
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `wss://api.nexscan.io`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Block Explorer
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://native.nexscan.io`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Shred version
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        17211
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Genesis hash
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `EsZtukC1MYxB2tohUTdigaUdy1k6kCU8HKS8LEK99iJY`
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table className="w-full border-collapse border border-slate-400 bg-white text-sm shadow-sm dark:border-slate-500 dark:bg-inherit">
+  <thead>
+    <tr>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        Space
+      </th>
+      <th className="w-1/2 border border-slate-300 px-3 py-0 text-left font-semibold text-slate-900 dark:border-slate-600 dark:text-slate-200">
+        EVM
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        chainId
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        1229
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        ETH RPC
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://evm-explorer.nexscan.io/rpc`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        ETH Websocket
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `wss://api.nexscan.io/`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Block Explorer
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://evm.nexscan.io`
+      </td>
+    </tr>
+    <tr>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        Block Explorer
+      </td>
+      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
+        `https://evm-explorer.nexscan.io/` (V-encoded Legacy addresses)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+- Gossip entrypoint for Mainnet: `bootstrap.nexscan.io:8001`
+- Shred version: 17211
+- Some of the popular nodes:
+- `78rvyxYJAUXGaZHJWyz7Yx81ribpAYvwupVuF9CugGws`, `FSZbHLPerYngGGwgWbXHtqTLRvLmgKVeUZCKwbFttWng`, `Eydu1kJNyPQNKtYrH4dqJJRxrxHuHtbXJCjgo6pSGSjf`, `QnQHuNAYMd7jaUJ61Pchi9bD7NbaZ4jxZ4cbdEaYMWF`, `Fxb6TgvScYJxjHjSpTr6a4xgLULLQSh8uhAexG5tzFJ6`
+
+### Example `nexis` command-line configuration
+
+```bash {{ title: '' }}
+nexisconfig set --url https://api.nexscan.io
+```
+
+### Example `nexis-validator` command-line
+
+```bash {{ title: '' }}
+$ nexis-validator \
+    --identity ~/validator-keypair.json \
+    --vote-account ~/vote-account-keypair.json \
+    --no-untrusted-rpc \
+    --ledger ~/validator-ledger \
+    --rpc-port 8899 \
+    --enable-rpc-transaction-history \
+    --trusted-validator 78rvyxYJAUXGaZHJWyz7Yx81ribpAYvwupVuF9CugGws \
+    --trusted-validator FSZbHLPerYngGGwgWbXHtqTLRvLmgKVeUZCKwbFttWng \
+    --dynamic-port-range 8000-8010 \
+    --entrypoint bootstrap.nexscan.io:8001 \
+    --limit-ledger-size
+```
+
+The `--trusted-validators` is operated by Nexis Network
+
+<GuidesOther
+  id="benchmark_cluster"
+  title="Benchmark a Cluster"
+  level={2}
+  isShow={false}
+/>
+
+The Nexis Network git repository contains all the scripts you might need to spin up your own local testnet. Depending on what you're looking to achieve, you may want to run a different variation, as the full-fledged, performance-enhanced multinode testnet is considerably more complex to set up than a Rust-only, singlenode testnode. If you are looking to develop high-level features, such as experimenting with smart contracts, save yourself some setup headaches and stick to the Rust-only singlenode demo. If you're doing performance optimization of the transaction pipeline, consider the enhanced singlenode demo. If you're doing consensus work, you'll need at least a Rust-only multinode demo. If you want to reproduce our TPS metrics, run the enhanced multinode demo.
+
+For all four variations, you'd need the latest Rust toolchain and the Nexis Network source code:
+
+First, setup Rust, Cargo and system packages as described in the Nexis Network README-
+
+Now checkout the code from GitHub:
+
+```bash {{ title: '' }}
+git clone https://github.com/nexis-network/nexis.git
+cd nexis
+```
+
+The demo code is sometimes broken between releases as we add new low-level features, so if this is your first time running the demo, you'll improve your odds of success if you check out the latest release before proceeding:
+
+```bash {{ title: '' }}
+TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+git checkout $TAG
+```
+
+### Configuration Setup
+
+Ensure important programs such as the vote program are built before any nodes are started. Note that we are using the release build here for good performance. If you want the debug build, use just `cargo build` and omit the `NDEBUG=1` part of the command.
+
+```bash {{ title: '' }}
+cargo build --release
+```
+
+The network is initialized with a genesis ledger generated by running the following script.
+
+```bash {{ title: '' }}
+NDEBUG=1 ./multinode-demo/setup.sh
+```
+
+### Faucet
+
+In order for the validators and clients to work, we'll need to spin up a faucet to give out some test tokens. The faucet delivers Milton Friedman-style "air drops" (free tokens to requesting clients) to be used in test transactions.
+
+Start the faucet with:
+
+```bash {{ title: '' }}
+NDEBUG=1 ./multinode-demo/faucet.sh
+```
+
+### Singlenode Testnet
+
+Before you start a validator, make sure you know the IP address of the machine you want to be the bootstrap validator for the demo, and make sure that udp ports 8000-10000 are open on all the machines you want to test with.
+
+Now start the bootstrap validator in a separate shell:
+
+```bash {{ title: '' }}
+NDEBUG=1 ./multinode-demo/bootstrap-validator.sh
+```
+
+Wait a few seconds for the server to initialize. It will print "leader ready..." when it's ready to receive transactions. The leader will request some tokens from the faucet if it doesn't have any. The faucet does not need to be running for subsequent leader starts.
+
+### Multinode Testnet
+
+To run a multinode testnet, after starting a leader node, spin up some additional validators in separate shells:
+
+```bash {{ title: '' }}
+NDEBUG=1 ./multinode-demo/validator-x.sh
+```
+
+To run a performance-enhanced validator on Linux, CUDA 10.0 must be installed on your system:
+
+```bash {{ title: '' }}
+./fetch-perf-libs.sh
+NDEBUG=1 SOLANA_CUDA=1 ./multinode-demo/bootstrap-validator.sh
+NDEBUG=1 SOLANA_CUDA=1 ./multinode-demo/validator.sh
+```
+
+### Testnet Client Demo
+
+Now that your singlenode or multinode testnet is up and running let's send it some transactions!
+
+In a separate shell start the client:
+
+```bash {{ title: '' }}
+NDEBUG=1 ./multinode-demo/bench-tps.sh # runs against localhost by default
+```
+
+What just happened? The client demo spins up several threads to send 500,000 transactions to the testnet as quickly as it can. The client then pings the testnet periodically to see how many transactions it processed in that time. Take note that the demo intentionally floods the network with UDP packets, such that the network will almost certainly drop a bunch of them. This ensures the testnet has an opportunity to reach 710k TPS. The client demo completes after it has convinced itself the testnet won't process any additional transactions. You should see several TPS measurements printed to the screen. In the multinode variation, you'll see TPS measurements for each validator node as well.
+
+### Testnet Debugging
+
+There are some useful debug messages in the code, you can enable them on a per-module and per-level basis. Before running a leader or validator set the normal RUST_LOG environment variable.
+
+For example
+
+- To enable `info` everywhere and `debug` only in the nexis-network::banking_stage module:
+
+```bash {{ title: '' }}
+export RUST_LOG=solana=info,solana::banking_stage=debug
+```
+
+- To enable BPF program logging:
+
+```bash {{ title: '' }}
+export RUST_LOG=solana_bpf_loader=trace
+```
+
+Generally we are using `debug` for infrequent debug messages, `trace` for potentially frequent messages and `info` for performance-related logging.
+
+You can also attach to a running process with GDB. The leader's process is named nexis-network-validator:
+
+```bash {{ title: '' }}
+sudo gdb
+attach <PID>
+set logging on
+thread apply all bt
+```
+
+This will dump all the threads stack traces into gdb.txt
+
+### Developer Testnet
+
+In this example the client connects to our public testnet. To run validators on the testnet you would need to open udp ports `8000-10000`.
+
+```bash {{ title: '' }}
+NDEBUG=1 ./multinode-demo/bench-tps.sh --entrypoint bootstrap.testnet.nexscan.io:8001 --faucet bootstrap.testnet.nexscan.io:9900 --duration 60 --tx_count 50
+```
+
+<GuidesOther
+  id="performance_metrics"
+  title="Performance Metrics"
+  level={2}
+  isShow={false}
+/>
+
+Nexis Network cluster performance is measured as average number of transactions per second that the network can sustain (TPS). And, how long it takes for a transaction to be confirmed by super majority of the cluster (Confirmation Time).
+
+Each cluster node maintains various counters that are incremented on certain events. These counters are periodically uploaded to a cloud based database. Nexis Network metrics dashboard fetches these counters, and computes the performance metrics and displays it on the dashboard.
+
+## TPS
+
+Each node's bank runtime maintains a count of transactions that it has processed. The dashboard first calculates the median count of transactions across all metrics enabled nodes in the cluster. The median cluster transaction count is then averaged over a 2 second period and displayed in the TPS time series graph. The dashboard also shows the Mean TPS, Max TPS and Total Transaction Count stats which are all calculated from the median transaction count.
+
+## Confirmation Time
+
+Each validator node maintains a list of active ledger forks that are visible to the node. A fork is considered to be frozen when the node has received and processed all entries corresponding to the fork. A fork is considered to be confirmed when it receives cumulative super majority vote, and when one of its children forks is frozen.
+
+The node assigns a timestamp to every new fork, and computes the time it took to confirm the fork. This time is reflected as validator confirmation time in performance metrics. The performance dashboard displays the average of each validator node's confirmation time as a time series graph.
+
+## Hardware setup
+
+The validator software is deployed to GCP n1-standard-16 instances with 1TB pd-ssd disk, and 2x Nvidia V100 GPUs. These are deployed in the us-west-1 region.
+
+solana-bench-tps is started after the network converges from a client machine with n1-standard-16 CPU-only instance with the following arguments: `--tx\_count=50000 --thread-batch-sleep 1000`
+
+TPS and confirmation metrics are captured from the dashboard numbers over a 5 minute average of when the bench-tps transfer stage begins.

@@ -9,41 +9,7 @@ module.exports = {
   favicon: "img/favicon.ico",
   organizationName: "nexis-labs", // Usually your GitHub org/user name.
   projectName: "nexis", // Usually your repo name.
-  onBrokenLinks: "throw",
-  stylesheets: [
-    {
-      href: "/katex/katex.min.css",
-      type: "text/css",
-      integrity:
-        "sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X",
-      crossorigin: "anonymous",
-    },
-  ],
-  i18n: {
-    defaultLocale: "en",
-    locales: ["en", "de", "es", "ru", "ar"],
-    // localesNotBuilding: ["ko", "pt", "vi", "zh", "ja"],
-    localeConfigs: {
-      en: {
-        label: "English",
-      },
-      ru: {
-        label: "Русский",
-      },
-      es: {
-        label: "Español",
-      },
-      de: {
-        label: "Deutsch",
-      },
-      ar: {
-        label: "العربية",
-      },
-      ko: {
-        label: "한국어",
-      },
-    },
-  },
+  onBrokenLinks: "log",
   themeConfig: {
     prism: {
       additionalLanguages: ["rust"],
@@ -82,17 +48,7 @@ module.exports = {
             // },
           ],
         },
-        {
-          type: "localeDropdown",
-          position: "right",
-        },
-        {
-          href: "https://nexis.network/discord",
-          // label: "Discord",
-          className: "header-link-icon header-discord-link",
-          "aria-label": "Nexis Network Discord",
-          position: "right",
-        },
+
         {
           href: "https://github.com/nexis-labs/nexis",
           // label: "GitHub",
