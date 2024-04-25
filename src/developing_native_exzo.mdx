@@ -1,0 +1,3774 @@
+---
+title: Develop on Native NEXIS
+---
+
+
+
+
+# Developing on native Nexis 
+
+<GuidesOther
+  id="program_model"
+  title="Programming Model"
+  level={2}
+  isShow={false}
+/>
+
+## Overview
+
+An app interacts with an Nexis Network cluster by sending it transactions with one or more instructions. The Nexis Network runtime passes those instructions to programs deployed by app developers beforehand. An instruction might, for example, tell a program to transfer lamports from one account to another or create an interactive contract that governs how lamports are transferred. Instructions are executed sequentially and atomically for each transaction. If any instruction is invalid, all account changes in the transaction are discarded.
+
+To start developing immediately you can build, deploy, and run one of the examples.
+
+## Transactions
+
+Program execution begins with a transaction being submitted to the cluster. The Nexis Network runtime will execute a program to process each of the instructions contained in the transaction, in order, and atomically.
+
+## Anatomy of a Transaction
+
+This section documents the binary format of a transaction.
+
+### Transaction Format
+
+A transaction contains a compact-array of signatures, followed by a message. Each item in the signatures array is a digital signature of the given message. The Nexis Network runtime verifies that the number of signatures matches the number in the first 8 bits of the message header. It also verifies that each signature was signed by the private key corresponding to the public key at the same index in the message's account addresses array.
+
+### Signature Format
+
+Each digital signature is in the ed25519 binary format and consumes 64 bytes.
+
+### Message Format
+
+A message contains a header, followed by a compact-array of account addresses, followed by a recent blockhash, followed by a compact-array of instructions.
+
+### Message Header Format
+
+The message header contains three unsigned 8-bit values. The first value is the number of required signatures in the containing transaction. The second value is the number of those corresponding account addresses that are read-only. The third value in the message header is the number of read-only account addresses not requiring signatures.
+
+### Account Addresses Format
+
+The addresses that require signatures appear at the beginning of the account address array, with addresses requesting write access first and read-only accounts following. The addresses that do not require signatures follow the addresses that do, again with read-write accounts first and read-only accounts following.
+
+### Blockhash Format
+
+A blockhash contains a 32-byte SHA-256 hash. It is used to indicate when a client last observed the ledger. Validators will reject transactions when the blockhash is too old.
+
+### Instruction Format
+
+An instruction contains a program ID index, followed by a compact-array of account address indexes, followed by a compact-array of opaque 8-bit data. The program ID index is used to identify an on-chain program that can interpret the opaque data. The program ID index is an unsigned 8-bit index to an account address in the message's array of account addresses. The account address indexes are each an unsigned 8-bit index into that same array.
+
+### Compact-Array Format
+
+A compact-array is serialized as the array length, followed by each array item. The array length is a special multi-byte encoding called compact-u16.
+
+### Compact-u16 Format
+
+A compact-u16 is a multi-byte encoding of 16 bits. The first byte contains the lower 7 bits of the value in its lower 7 bits. If the value is above 0x7f, the high bit is set and the next 7 bits of the value are placed into the lower 7 bits of a second byte. If the value is above 0x3fff, the high bit is set and the remaining 2 bits of the value are placed into the lower 2 bits of a third byte.
+
+### Account Address Format
+
+An account address is 32-bytes of arbitrary data. When the address requires a digital signature, the runtime interprets it as the public key of an ed25519 keypair.
+
+## Instructions
+
+Each instruction specifies a single program, a subset of the transaction's accounts that should be passed to the program, and a data byte array that is passed to the program. The program interprets the data array and operates on the accounts specified by the instructions. The program can return successfully, or with an error code. An error return causes the entire transaction to fail immediately.
+
+Programs typically provide helper functions to construct instructions they support. For example, the system program provides the following Rust helper to construct a `SystemInstruction::CreateAccount instruction`:
+
+```js {{ title: '' }}
+pub fn create_account(
+    from_pubkey: &Pubkey,
+    to_pubkey: &Pubkey,
+    lamports: u64,
+    space: u64,
+    owner: &Pubkey,
+) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*from_pubkey, true),
+        AccountMeta::new(*to_pubkey, true),
+    ];
+    Instruction::new_with_bincode(
+        system_program::id(),
+        &SystemInstruction::CreateAccount {
+            lamports,
+            space,
+            owner: *owner,
+        },
+        account_metas,
+    )
+}ru
+```
+
+Which can be found here.
+
+### Program Id
+
+The instruction's program id specifies which program will process this instruction. The program's account's owner specifies which loader should be used to load and execute the program and the data contains information about how the runtime should execute the program.
+
+In the case of on-chain BPF programs, the owner is the BPF Loader and the account data holds the BPF bytecode. Program accounts are permanently marked as executable by the loader once they are successfully deployed. The runtime will reject transactions that specify programs that are not executable.
+
+Unlike on-chain programs, Native Programs are handled differently in that they are built directly into the Nexis Network runtime.
+
+### Accounts
+
+The accounts referenced by an instruction represent on-chain state and serve as both the inputs and outputs of a program. More information about Accounts can be found in the Accounts section.
+
+### Instruction data
+
+Each instruction caries a general purpose byte array that is passed to the program along with the accounts. The contents of the instruction data is program specific and typically used to convey what operations the program should perform, and any additional information those operations may need above and beyond what the accounts contain.
+
+Programs are free to specify how information is encoded into the instruction data byte array. The choice of how data is encoded should take into account the overhead of decoding since that step is performed by the program on-chain. It's been observed that some common encodings (Rust's bincode for example) are very inefficient.
+
+The Nexis Network Program Library's Token program gives one example of how instruction data can be encoded efficiently, but note that this method only supports fixed sized types. Token utilizes the Pack trait to encode/decode instruction data for both token instructions as well as token account states.
+
+### Multiple instructions in a single transaction
+
+A transaction can contain instructions in any order. This means a malicious user could craft transactions that may pose instructions in an order that the program has not been protected against. Programs should be hardened to properly and safely handle any possible instruction sequence.
+
+One not so obvious example is account deinitialization. Some programs may attempt to deinitialize an account by setting its lamports to zero, with the assumption that the runtime will delete the account. This assumption may be valid between transactions, but it is not between instructions or cross-program invocations. To harden against this, the program should also explicitly zero out the account's data.
+
+An example of where this could be a problem is if a token program, upon transferring the token out of an account, sets the account's lamports to zero, assuming it will be deleted by the runtime. If the program does not zero out the account's data, a malicious user could trail this instruction with another that transfers the tokens a second time.
+
+## Signatures
+
+Each transaction explicitly lists all account public keys referenced by the transaction's instructions. A subset of those public keys are each accompanied by a transaction signature. Those signatures signal on-chain programs that the account holder has authorized the transaction. Typically, the program uses the authorization to permit debiting the account or modifying its data. More information about how the authorization is communicated to a program can be found in Accounts.
+
+## Recent Blockhash
+
+A transaction includes a recent blockhash to prevent duplication and to give transactions lifetimes. Any transaction that is completely identical to a previous one is rejected, so adding a newer blockhash allows multiple transactions to repeat the exact same action. Transactions also have lifetimes that are defined by the blockhash, as any transaction whose blockhash is too old will be rejected.
+
+<GuidesOther id="clients" title="Clients" level={2} isShow={false} />
+
+## JSON RPC API
+
+Nexis Network nodes accept HTTP requests using the [JSON-RPC 2.0](https://www.jsonrpc.org/specification) specification.
+
+To interact with a Nexis Network node inside a JavaScript application, use the [solana-web3.js](https://github.com/solana-labs/solana-web3.js) library, which gives a convenient interface for the RPC methods.
+
+## RPC HTTP Endpoint
+
+Default port: 8899 eg. http://localhost:8899, http://192.168.1.88:8899
+
+## RPC PubSub WebSocket Endpoint
+
+Default port: 8900 eg. ws://localhost:8900, http://192.168.1.88:8900
+
+## Methods
+
+- [getAccountInfo](https://docs.nexis.com/apps/jsonrpc-api#getaccountinfo)
+- [getBalance](https://docs.nexis.com/apps/jsonrpc-api#getbalance)
+- [getBlockCommitment](https://docs.nexis.com/apps/jsonrpc-api#getblockcommitment)
+- [getBlockTime](https://docs.nexis.com/apps/jsonrpc-api#getblocktime)
+- [getClusterNodes](https://docs.nexis.com/apps/jsonrpc-api#getclusternodes)
+- [getConfirmedBlock](https://docs.nexis.com/apps/jsonrpc-api#getconfirmedblock)
+- [getConfirmedBlocks](https://docs.nexis.com/apps/jsonrpc-api#getconfirmedblocks)
+- [getConfirmedBlocksWithLimit](https://docs.nexis.com/apps/jsonrpc-api#getconfirmedblockswithlimit)
+- [getConfirmedSignaturesForAddress](https://docs.nexis.com/apps/jsonrpc-api#getconfirmedsignaturesforaddress)
+- [getConfirmedSignaturesForAddress2](https://docs.nexis.com/apps/jsonrpc-api#getconfirmedsignaturesforaddress2)
+- [getConfirmedTransaction](https://docs.nexis.com/apps/jsonrpc-api#getconfirmedtransaction)
+- [getEpochInfo](https://docs.nexis.com/apps/jsonrpc-api#getepochinfo)
+- [getEpochSchedule](https://docs.nexis.com/apps/jsonrpc-api#getepochschedule)
+- [getFeeCalculatorForBlockhash](https://docs.nexis.com/apps/jsonrpc-api#getfeecalculatorforblockhash)
+- [getFeeRateGovernor](https://docs.nexis.com/apps/jsonrpc-api#getfeerategovernor)
+- [getFees](https://docs.nexis.com/apps/jsonrpc-api#getfees)
+- [getFirstAvailableBlock](https://docs.nexis.com/apps/jsonrpc-api#getfirstavailableblock)
+- [getGenesisHash](https://docs.nexis.com/apps/jsonrpc-api#getgenesishash)
+- [getHealth](https://docs.nexis.com/apps/jsonrpc-api#gethealth)
+- [getIdentity](https://docs.nexis.com/apps/jsonrpc-api#getidentity)
+- [getInflationGovernor](https://docs.nexis.com/apps/jsonrpc-api#getinflationgovernor)
+- [getInflationRate](https://docs.nexis.com/apps/jsonrpc-api#getinflationrate)
+- [getInflationReward](https://docs.nexis.com/apps/jsonrpc-api#getinflationReward)
+- [getLargestAccounts](https://docs.nexis.com/apps/jsonrpc-api#getlargestaccounts)
+- [getLeaderSchedule](https://docs.nexis.com/apps/jsonrpc-api#getleaderschedule)
+- [getMaxRetransmitSlot](https://docs.nexis.com/apps/jsonrpc-api#getmaxretransmitSlot)
+- [getMaxShredInsertSlot](https://docs.nexis.com/apps/jsonrpc-api#getmaxshredinsertSlot)
+- [getMinimumBalanceForRentExemption](https://docs.nexis.com/apps/jsonrpc-api#getminimumbalanceforrentexemption)
+- [getMultipleAccounts](https://docs.nexis.com/apps/jsonrpc-api#getmultipleaccounts)
+- [getProgramAccounts](https://docs.nexis.com/apps/jsonrpc-api#getprogramaccounts)
+- [getRecentBlockhash](https://docs.nexis.com/apps/jsonrpc-api#getrecentblockhash)
+- [getRecentPerformanceSamples](https://docs.nexis.com/apps/jsonrpc-api#getrecentperformancesamples)
+- [getSnapshotSlot](https://docs.nexis.com/apps/jsonrpc-api#getsnapshotslot)
+- [getSignatureStatuses](https://docs.nexis.com/apps/jsonrpc-api#getsignaturestatuses)
+- [getSlot](https://docs.nexis.com/apps/jsonrpc-api#getslot)
+- [getSlotLeader](https://docs.nexis.com/apps/jsonrpc-api#getslotleader)
+- [getSlotLeaders](https://docs.nexis.com/apps/jsonrpc-api#getslotleaders)
+- [getStakeActivation](https://docs.nexis.com/apps/jsonrpc-api#getstakeactivation)
+- [getSupply](https://docs.nexis.com/apps/jsonrpc-api#getsupply)
+- [getTokenAccountBalance](https://docs.nexis.com/apps/jsonrpc-api#gettokenaccountbalance)
+- [getTokenAccountsByDelegate](https://docs.nexis.com/apps/jsonrpc-api#gettokenaccountsbydelegate)
+- [getTokenAccountsByOwner](https://docs.nexis.com/apps/jsonrpc-api#gettokenaccountsbyowner)
+- [getTokenLargestAccounts](https://docs.nexis.com/apps/jsonrpc-api#gettokenlargestaccounts)
+- [getTokenSupply](https://docs.nexis.com/apps/jsonrpc-api#gettokensupply)
+- [getTransactionCount](https://docs.nexis.com/apps/jsonrpc-api#gettransactioncount)
+- [getVersion](https://docs.nexis.com/apps/jsonrpc-api#getversion)
+- [getVoteAccounts](https://docs.nexis.com/apps/jsonrpc-api#getvoteaccounts)
+- [minimumLedgerSlot](https://docs.nexis.com/apps/jsonrpc-api#minimumledgerslot)
+- [requestAirdrop](https://docs.nexis.com/apps/jsonrpc-api#requestairdrop)
+- [sendTransaction](https://docs.nexis.com/apps/jsonrpc-api#sendtransaction)
+- [simulateTransaction](https://docs.nexis.com/apps/jsonrpc-api#simulatetransaction)
+- [Subscription Websocket](https://docs.nexis.com/apps/jsonrpc-api#subscription-websocket)
+  - [accountSubscribe](https://docs.nexis.com/apps/jsonrpc-api#accountsubscribe)
+  - [accountUnsubscribe](https://docs.nexis.com/apps/jsonrpc-api#accountunsubscribe)
+  - [logsSubscribe](https://docs.nexis.com/apps/jsonrpc-api#logssubscribe)
+  - [logsUnsubscribe](https://docs.nexis.com/apps/jsonrpc-api#logsunsubscribe)
+  - [programSubscribe](https://docs.nexis.com/apps/jsonrpc-api#programsubscribe)
+  - [programUnsubscribe](https://docs.nexis.com/apps/jsonrpc-api#programunsubscribe)
+  - [signatureSubscribe](https://docs.nexis.com/apps/jsonrpc-api#signaturesubscribe)
+  - [signatureUnsubscribe](https://docs.nexis.com/apps/jsonrpc-api#signatureunsubscribe)
+  - [slotSubscribe](https://docs.nexis.com/apps/jsonrpc-api#slotsubscribe)
+  - [slotUnsubscribe](https://docs.nexis.com/apps/jsonrpc-api#slotunsubscribe)
+
+## Request Formatting
+
+To make a JSON-RPC request, send an HTTP POST request with a `Content-Type: application/json` header. The JSON request data should contain 4 fields:
+
+- `jsonrpc: <string>`, set to `"2.0"`
+- `id: <number>`, a unique client-generated identifying integer
+- `method: <string>`, a string containing the method to be invoked
+- `params: <array>`, a JSON array of ordered parameter values
+
+Example using curl:
+
+```json {{ title: 'Example' }}
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getBalance", "params":["83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri"]}' 192.168.1.88:8899
+```
+
+The response output will be a JSON object with the following fields:
+
+- `jsonrpc: <string>`, matching the request specification
+- `id: <number>`, matching the request identifier
+- `result: <array|number|object|string>`, requested data or success confirmation
+
+Requests can be sent in batches by sending an array of JSON-RPC request objects as the data for a single POST.
+
+## Definitions
+
+- Hash: A SHA-256 hash of a chunk of data.
+- Pubkey: The public key of a Ed25519 key-pair.
+- Signature: An Ed25519 signature of a chunk of data.
+- Transaction: A Nexis Network instruction signed by a client key-pair.
+
+## Configuring State Commitment
+
+Nexis Network nodes choose which bank state to query based on a commitment requirement set by the client. Clients may specify either:
+
+- `"max"` - the node will query the most recent bank confirmed by the cluster as having reached maximum lockout.
+- `"root"` - the node will query the most recent bank having reached maximum lockout on this node.
+- `"single"` - the node will query the most recent bank having reached 1 cluster confirmation.
+- `"singleGossip"` - the node will query the most recent bank having reached 1 cluster confirmation via gossip votes; may occur before or after `single`, depending on gossip traffic.
+- `"recent"` - the node will query its most recent bank.
+
+The commitment parameter should be included as the last element in the params array:
+
+```json {{ title: 'Example' }}
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getBalance", "params":["83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri",{"commitment":"max"}]}' 192.168.1.88:8899
+```
+
+### Default
+
+If commitment configuration is not provided, the node will default to `"max"` commitment
+
+Only methods that query bank state accept the commitment parameter. They are indicated in the API Reference below.
+
+### RpcResponse Structure
+
+Many methods that take a commitment parameter return an RpcResponse JSON object comprised of two parts:
+
+- `context` : An RpcResponseContext JSON structure including a `slot` field at which the operation was evaluated.
+- `value` : The value returned by the operation itself.
+
+## Health Check
+
+Although not a JSON RPC API, a `GET /heath` at the RPC HTTP Endpoint provides a health-check mechanism for use by load balancers or other network infrastructure. This request will always return a HTTP 200 OK response with a body of "ok" or "behind" based on the following conditions:
+
+1. If one or more `--trusted-validator` arguments are provided to `nexis-network-validator`, "ok" is returned when the node has within `HEALTH_CHECK_SLOT_DISTANCE` slots of the highest trusted validator, otherwise "behind" is returned.
+2. "ok" is always returned if no trusted validators are provided.
+
+## JSON RPC API Reference
+
+### getAccountInfo
+
+Returns all information associated with the account of provided Pubkey
+
+### Parameters
+
+- `<string>` - Pubkey of account to query, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64", or jsonParsed". "base58" is limited to Account data of less than 128 bytes. "base64" will return base64 encoded data for Account data of any size. Parsed-JSON encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If parsed-JSON is requested but a parser cannot be found, the field falls back to base64 encoding, detectable when the `data` field is type `<string>`. jsonParsed encoding is UNSTABLE
+  - (optional) `dataSlice: <object>` - limit the returned account data using the provided `offset: <usize>` and `length: <usize>` fields; only available for "base58" or "base64" encoding.
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` equal to:
+
+- `<null>` - if the requested account doesn't exist
+- `<object>` - otherwise, a JSON object containing:
+  - `lamports: <u64>`, number of lamports assigned to this account, as a u64
+  - `owner: <string>`, base-58 encoded Pubkey of the program this account has been assigned to
+  - `data: <[string, encoding]|object>`, data associated with the account, either as encoded binary data or JSON format `{<program>: <state>}`, depending on encoding parameter
+  - `executable: <bool>`, boolean indicating if the account contains a program (and is strictly read-only)
+  - `rentEpoch: <u64>`, the epoch at which this account will next owe rent, as u64
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getAccountInfo", "params":["vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg",{"encoding": "base58"}]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":1},"value":{"data":["11116bv5nS2h3y12kD1yUKeMZvGcKLSjQgX6BeV7u1FrjeJcKfsHRTPuR3oZ1EioKtYGiYxpxMG5vpbZLsbcBYBEmZZcMKaSoGx9JZeAuWf","base58"],"executable":false,"lamports":1000000000,"owner":"11111111111111111111111111111111","rentEpoch":2}},"id":1}
+
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getAccountInfo", "params":["4fYNw3dojWmQ4dXtSGE9epjRGy9pFSx62YypT7avPYvA",{"encoding":"json"}]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":1},"value":{"data":{"nonce":{"initialized":{"authority":"Bbqg1M4YVVfbhEzwA9SpC9FhsaG83YMTYoR4a8oTDLX","blockhash":"3xLP3jK6dVJwpeGeTDYTwdDK3TKchUf1gYYGHa4sF3XJ","feeCalculator":{"lamportsPerSignature":5000}}}},"executable":false,"lamports":1000000000,"owner":"11111111111111111111111111111111","rentEpoch":2}},"id":1}
+```
+
+### getBalance
+
+Returns the balance of the account of provided Pubkey
+
+### Parameters
+
+- `<string>` - Pubkey of account to query, as base-58 encoded string
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `RpcResponse<u64>` - RpcResponse JSON object with `value` field set to the balance
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getBalance", "params":["83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri"]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":1},"value":0},"id":1}
+```
+
+### getBlockCommitment
+
+Returns commitment for particular block
+
+### Parameters
+
+- `<u64>` - block, identified by Slot
+
+### Results
+
+The result field will be a JSON object containing:
+
+- `commitment` - commitment, comprising either:
+  - `<null>` - Unknown block
+  - `<array>` - commitment, array of u64 integers logging the amount of cluster stake in lamports that has voted on the block at each depth from 0 to `MAX_LOCKOUT_HISTORY` + 1
+- `totalStake` - total active stake, in lamports, of the current epoch
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getBlockCommitment","params":[5]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"commitment":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,32],"totalStake": 42},"id":1}
+```
+
+### getBlockTime
+
+Returns the estimated production time of a confirmed block.
+
+Each validator reports their UTC time to the ledger on a regular interval by intermittently adding a timestamp to a Vote for a particular block. A requested block's time is calculated from the stake-weighted mean of the Vote timestamps in a set of recent blocks recorded on the ledger.
+
+Nodes that are booting from snapshot or limiting ledger size (by purging old slots) will return null timestamps for blocks below their lowest root + TIMESTAMP_SLOT_RANGE. Users interested in having this historical data must query a node that is built from genesis and retains the entire ledger.
+
+### Parameters
+
+- `<u64>` - block, identified by Slot
+
+### Results
+
+- `<i64>` - estimated production time, as Unix timestamp (seconds since the Unix epoch)
+- `<null>` - timestamp is not available for this block
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getBlockTime","params":[5]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":1574721591,"id":1}
+```
+
+### getClusterNodes
+
+Returns information about all the nodes participating in the cluster
+
+### Parameters
+
+None
+
+### Results
+
+The result field will be an array of JSON objects, each with the following sub fields:
+
+- `pubkey: <string>` - Node public key, as base-58 encoded string
+- `gossip: <string>` - Gossip network address for the node
+- `tpu: <string>` - TPU network address for the node
+- `rpc: <string>|null` - JSON RPC network address for the node, or `null` if the JSON RPC service is not enabled
+- `version: <string>|null` - The software version of the node, or `null` if the version information is not available
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getClusterNodes"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":[{"gossip":"10.239.6.48:8001","pubkey":"9QzsJf7LPLj8GkXbYT3LFDKqsj2hHG7TA3xinJHu8epQ","rpc":"10.239.6.48:8899","tpu":"10.239.6.48:8856"},"version":"1.0.0 c375ce1f"],"id":1}
+```
+
+### getConfirmedBlock
+
+Returns identity and transaction information about a confirmed block in the ledger
+
+### Parameters
+
+- `<u64>` - slot, as u64 integer
+- `<string>` - encoding for each returned Transaction, either "json", "jsonParsed", "base58" (slow), or "base64". If parameter not provided, the default encoding is JSON. jsonParsed encoding is UNSTABLE Parsed-JSON encoding attempts to use program-specific instruction parsers to return more human-readable and explicit data in the `transaction.message.instructions` list. If parsed-JSON is requested but a parser cannot be found, the instruction falls back to regular JSON encoding (`accounts`, `data`, and `programIdIndex` fields).
+
+### Results
+
+The result field will be an object with the following fields:
+
+- `<null>` - if specified block is not confirmed
+- `<object>` - if block is confirmed, an object with the following fields:
+  - `blockhash: <string>` - the blockhash of this block, as base-58 encoded string
+  - `previousBlockhash: <string>` - the blockhash of this blocks parent, as base-58 encoded string; if the parent block is not available due to ledger cleanup, this field will return "11111111111111111111111111111111"
+  - `parentSlot: <u64>` - the slot index of this block's parent
+  - `transactions: <array>` - an array of JSON objects containing:
+    - `transaction: <object|[string,encoding]>` - [Transaction](https://docs.nexis.com/apps/jsonrpc-api#transaction-structure) object, either in JSON format or encoded binary data, depending on encoding parameter
+    - `meta: <object>` - transaction status metadata object, containing `null` or:
+      - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+      - `fee: <u64>` - fee this transaction was charged, as u64 integer
+      - `preBalances: <array>` - array of u64 account balances from before the transaction was processed
+      - `postBalances: <array>` - array of u64 account balances after the transaction was processed
+      - DEPRECATED: `status: <object>` - Transaction status
+        - `"Ok": <null>` - Transaction was successful
+        - `"Err": <ERR>` - Transaction failed with TransactionError
+  - `rewards: <array>` - an array of JSON objects containing:
+    - `pubkey: <string>` - The public key, as base-58 encoded string, of the account that received the reward
+    - `lamports: <i64>` - number of reward lamports credited or debited by the account, as a i64
+  - `blockTime: <i64 | null>` - estimated production time, as Unix timestamp (seconds since the Unix epoch). null if not available
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedBlock","params":[430, "json"]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"blockTime":null,"blockhash":"3Eq21vXNB5s86c62bVuUfTeaMif1N2kUqRPBmGRJhyTA","parentSlot":429,"previousBlockhash":"mfcyqEXB3DnHXki6KjjmZck6YjmZLvpAByy2fj4nh6B","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"postBalances":[499998932500,26858640,1,1,1],"preBalances":[499998937500,26858640,1,1,1],"status":{"Ok":null}},"transaction":{"message":{"accountKeys":["3UVYmECPPMZSCqWKfENfuoTv51fTDTWicX9xmBD2euKe","AjozzgE83A3x1sHNUR64hfH7zaEBWeMaFuAN9kQgujrc","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3WRQHmj49EPs4if7o9f1jSRVZpm2dvihR9C8jY4NqEwXUbLwx15HBSNcP1","programIdIndex":4}],"recentBlockhash":"mfcyqEXB3DnHXki6KjjmZck6YjmZLvpAByy2fj4nh6B"},"signatures":["2nBhEBYYvfaAe16UMNqRHre4YNSskvuYgx3M6E4JP1oDYvZEJHvoPzyUidNgNX5r9sTyN1J9UxtbCXy2rqYcuyuv"]}}]},"id":1}
+
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedBlock","params":[430, "base64"]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"blockTime":null,"blockhash":"3Eq21vXNB5s86c62bVuUfTeaMif1N2kUqRPBmGRJhyTA","parentSlot":429,"previousBlockhash":"mfcyqEXB3DnHXki6KjjmZck6YjmZLvpAByy2fj4nh6B","rewards":[],"transactions":[{"meta":{"err":null,"fee":5000,"postBalances":[499998932500,26858640,1,1,1],"preBalances":[499998937500,26858640,1,1,1],"status":{"Ok":null}},"transaction":["AVj7dxHlQ9IrvdYVIjuiRFs1jLaDMHixgrv+qtHBwz51L4/ImLZhszwiyEJDIp7xeBSpm/TX5B7mYzxa+fPOMw0BAAMFJMJVqLw+hJYheizSoYlLm53KzgT82cDVmazarqQKG2GQsLgiqktA+a+FDR4/7xnDX7rsusMwryYVUdixfz1B1Qan1RcZLwqvxvJl4/t3zHragsUp0L47E24tAFUgAAAABqfVFxjHdMkoVmOYaR1etoteuKObS21cc1VbIQAAAAAHYUgdNXR0u3xNdiTr072z2DVec9EQQ/wNo1OAAAAAAAtxOUhPBp2WSjUNJEgfvy70BbxI00fZyEPvFHNfxrtEAQQEAQIDADUCAAAAAQAAAAAAAACtAQAAAAAAAAdUE18R96XTJCe+YfRfUp6WP+YKCy/72ucOL8AoBFSpAA==","base64"]}]},"id":1}
+```
+
+### Transaction Structure
+
+Transactions are quite different from those on other blockchains. Be sure to review [Anatomy of a Transaction](https://docs.nexis.com/transaction) to learn about transactions on Nexis Network.
+
+The JSON structure of a transaction is defined as follows:
+
+- `signatures: <array[string]>` - A list of base-58 encoded signatures applied to the transaction. The list is always of length `message.header.numRequiredSignatures`, and the signature at index `i` corresponds to the public key at index `i` in `message.account_keys`.
+- `message: <object>` - Defines the content of the transaction.
+  - `accountKeys: <array[string]>` - List of base-58 encoded public keys used by the transaction, including by the instructions and for signatures. The first `message.header.numRequiredSignatures` public keys must sign the transaction.
+  - `header: <object>` - Details the account types and signatures required by the transaction.
+    - `numRequiredSignatures: <number>` - The total number of signatures required to make the transaction valid. The signatures must match the first `numRequiredSignatures` of `message.account_keys`.
+    - `numReadonlySignedAccounts: <number>` - The last `numReadonlySignedAccounts` of the signed keys are read-only accounts. Programs may process multiple transactions that load read-only accounts within a single PoH entry, but are not permitted to credit or debit lamports or modify account data. Transactions targeting the same read-write account are evaluated sequentially.
+    - `numReadonlyUnsignedAccounts: <number>` - The last `numReadonlyUnsignedAccounts` of the unsigned keys are read-only accounts.
+  - `recentBlockhash: <string>` - A base-58 encoded hash of a recent block in the ledger used to prevent transaction duplication and to give transactions lifetimes.
+  - `instructions: <array[object]>` - List of program instructions that will be executed in sequence and committed in one atomic transaction if all succeed.
+    - `programIdIndex: <number>` - Index into the `message.accountKeys` array indicating the program account that executes this instruction.
+    - `accounts: <array[number]>` - List of ordered indices into the `message.accountKeys` array indicating which accounts to pass to the program.
+    - `data: <string>` - The program input data encoded in a base-58 string.
+
+### getConfirmedBlocks
+
+Returns a list of confirmed blocks
+
+### Parameters
+
+- `<u64>` - start_slot, as u64 integer
+- `<u64>` - (optional) end_slot, as u64 integer
+
+### Results
+
+The result field will be an array of u64 integers listing confirmed blocks between `start_slot` and either `end_slot`, if provided, or latest confirmed block, inclusive. Max range allowed is 500,000 slots.
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedBlocks","params":[5, 10]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":[5,6,7,8,9,10],"id":1}
+```
+
+### getConfirmedBlocksWithLimit
+
+Returns a list of confirmed blocks starting at the given slot
+
+### Parameters
+
+- `<u64>` - start_slot, as u64 integer
+- `<u64>` - limit, as u64 integer
+- (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment); "processed" is not supported. If parameter not provided, the default is "finalized".
+
+### Results
+
+The result field will be an array of u64 integers listing confirmed blocks starting at start_slot for up to limit blocks, inclusive.
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc": "2.0","id":1,"method":"getConfirmedBlocksWithLimit","params":[5, 3]}
+'
+// Result
+{"jsonrpc":"2.0","result":[5,6,7],"id":1}
+```
+
+### getConfirmedSignaturesForAddress
+
+DEPRECATED: Please use getConfirmedSignaturesForAddress2 instead
+
+Returns a list of all the confirmed signatures for transactions involving an address, within a specified Slot range. Max range allowed is 10,000 Slots
+
+### Parameters
+
+- `<string>` - account address as base-58 encoded string
+- `<u64>` - start slot, inclusive
+- `<u64>` - end slot, inclusive
+
+### Results
+
+The result field will be an array of:
+
+- `<string>` - transaction signature as base-58 encoded string
+
+The signatures will be ordered based on the Slot in which they were confirmed in, from lowest to highest Slot
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedSignaturesForAddress","params":["6H94zdiaYfRfPfKjYLjyr2VFBg6JHXygy84r3qhc3NsC", 0, 100]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{["35YGay1Lwjwgxe9zaH6APSHbt9gYQUCtBWTNL3aVwVGn9xTFw2fgds7qK5AL29mP63A9j3rh8KpN1TgSR62XCaby","4bJdGN8Tt2kLWZ3Fa1dpwPSEkXWWTSszPSf1rRVsCwNjxbbUdwTeiWtmi8soA26YmwnKD4aAxNp8ci1Gjpdv4gsr","4LQ14a7BYY27578Uj8LPCaVhSdJGLn9DJqnUJHpy95FMqdKf9acAhUhecPQNjNUy6VoNFUbvwYkPociFSf87cWbG"]},"id":1}
+```
+
+### getConfirmedSignaturesForAddress2
+
+Returns confirmed signatures for transactions involving an address backwards in time from the provided signature or most recent confirmed block
+
+### Parameters
+
+- `<string>` - account address as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following fields:
+  - `before: <string>` - (optional) start searching backwards from this transaction signature. If not provided the search starts from the top of the highest max confirmed block.
+  - `limit: <number>` - (optional) maximum transaction signatures to return (between 1 and 1,000, default: 1,000).
+
+### Results
+
+The result field will be an array of transaction signature information, ordered from newest to oldest transaction:
+
+- `<object>`
+  - `signature: <string>` - transaction signature as base-58 encoded string
+  - `slot: <u64>` - The slot that contains the block with the transaction
+  - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+  - `memo: <string |null>` - Memo associated with the transaction, null if no memo is present
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedSignaturesForAddress2","params":["Vote111111111111111111111111111111111111111", {"limit": 1}]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":[{"err":null,"memo":null,"signature":"5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqokgpiKRLuS83KUxyZyv2sUYv","slot":114}],"id":1}
+```
+
+### getConfirmedTransaction
+
+Returns transaction details for a confirmed transaction
+
+### Parameters
+
+- `<string>` - transaction signature as base-58 encoded string N encoding attempts to use program-specific instruction parsers to return more human-readable and explicit data in the `transaction.message.instructions` list. If parsed-JSON is requested but a parser cannot be found, the instruction falls back to regular JSON encoding (`accounts`, `data`, and `programIdIndex` fields).
+- `<string>` - (optional) encoding for the returned Transaction, either "json", "jsonParsed", "base58" (slow), or "base64". If parameter not provided, the default encoding is JSON. jsonParsed encoding is UNSTABLE
+
+### Results
+
+- `<null>` - if transaction is not found or not confirmed
+- `<object>` - if transaction is confirmed, an object with the following fields:
+  - `slot: <u64>` - the slot this transaction was processed in
+  - `transaction: <object|[string,encoding]>` - [Transaction](https://docs.nexis.com/apps/jsonrpc-api#transaction-structure) object, either in JSON format or encoded binary data, depending on encoding parameter
+  - `meta: <object | null>` - transaction status metadata object:
+    - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+    - `fee: <u64>` - fee this transaction was charged, as u64 integer
+    - `preBalances: <array>` - array of u64 account balances from before the transaction was processed
+    - `postBalances: <array>` - array of u64 account balances after the transaction was processed
+    - DEPRECATED: `status: <object>` - Transaction status
+      - `"Ok": <null>` - Transaction was successful
+      - `"Err": <ERR>` - Transaction failed with TransactionError
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedTransaction","params":["2nBhEBYYvfaAe16UMNqRHre4YNSskvuYgx3M6E4JP1oDYvZEJHvoPzyUidNgNX5r9sTyN1J9UxtbCXy2rqYcuyuv", "json"]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"meta":{"err":null,"fee":5000,"postBalances":[499998932500,26858640,1,1,1],"preBalances":[499998937500,26858640,1,1,1],"status":{"Ok":null}},"slot":430,"transaction":{"message":{"accountKeys":["3UVYmECPPMZSCqWKfENfuoTv51fTDTWicX9xmBD2euKe","AjozzgE83A3x1sHNUR64hfH7zaEBWeMaFuAN9kQgujrc","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3WRQHmj49EPs4if7o9f1jSRVZpm2dvihR9C8jY4NqEwXUbLwx15HBSNcP1","programIdIndex":4}],"recentBlockhash":"mfcyqEXB3DnHXki6KjjmZck6YjmZLvpAByy2fj4nh6B"},"signatures":["2nBhEBYYvfaAe16UMNqRHre4YNSskvuYgx3M6E4JP1oDYvZEJHvoPzyUidNgNX5r9sTyN1J9UxtbCXy2rqYcuyuv"]}},"id":1}
+
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0","id":1,"method":"getConfirmedTransaction","params":["2nBhEBYYvfaAe16UMNqRHre4YNSskvuYgx3M6E4JP1oDYvZEJHvoPzyUidNgNX5r9sTyN1J9UxtbCXy2rqYcuyuv", "base64"]}' localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"meta":{"err":null,"fee":5000,"postBalances":[499998932500,26858640,1,1,1],"preBalances":[499998937500,26858640,1,1,1],"status":{"Ok":null}},"slot":430,"transaction":["AVj7dxHlQ9IrvdYVIjuiRFs1jLaDMHixgrv+qtHBwz51L4/ImLZhszwiyEJDIp7xeBSpm/TX5B7mYzxa+fPOMw0BAAMFJMJVqLw+hJYheizSoYlLm53KzgT82cDVmazarqQKG2GQsLgiqktA+a+FDR4/7xnDX7rsusMwryYVUdixfz1B1Qan1RcZLwqvxvJl4/t3zHragsUp0L47E24tAFUgAAAABqfVFxjHdMkoVmOYaR1etoteuKObS21cc1VbIQAAAAAHYUgdNXR0u3xNdiTr072z2DVec9EQQ/wNo1OAAAAAAAtxOUhPBp2WSjUNJEgfvy70BbxI00fZyEPvFHNfxrtEAQQEAQIDADUCAAAAAQAAAAAAAACtAQAAAAAAAAdUE18R96XTJCe+YfRfUp6WP+YKCy/72ucOL8AoBFSpAA==","base64"]},"id":1}
+```
+
+### getEpochInfo
+
+Returns information about the current epoch
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result field will be an object with the following fields:
+
+- `absoluteSlot: <u64>`, the current slot
+- `blockHeight: <u64>`, the current block height
+- `epoch: <u64>`, the current epoch
+- `slotIndex: <u64>`, the current slot relative to the start of the current epoch
+- `slotsInEpoch: <u64>`, the number of slots in this epoch
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getEpochInfo"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"absoluteSlot":166598,"blockHeight": 166500, "epoch":27,"slotIndex":2790,"slotsInEpoch":8192},"id":1}
+```
+
+### getEpochSchedule
+
+Returns epoch schedule information from this cluster's genesis config
+
+### Parameters
+
+None
+
+### Results
+
+The result field will be an object with the following fields:
+
+- `slotsPerEpoch: <u64>`, the maximum number of slots in each epoch
+- `leaderScheduleSlotOffset: <u64>`, the number of slots before beginning of an epoch to calculate a leader schedule for that epoch
+- `warmup: <bool>`, whether epochs start short and grow
+- `firstNormalEpoch: <u64>`, first normal-length epoch, log2(slotsPerEpoch) - log2(MINIMUM_SLOTS_PER_EPOCH)
+- `firstNormalSlot: <u64>`, MINIMUM_SLOTS_PER_EPOCH \* (2.pow(firstNormalEpoch) - 1)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getEpochSchedule"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"firstNormalEpoch":8,"firstNormalSlot":8160,"leaderScheduleSlotOffset":8192,"slotsPerEpoch":8192,"warmup":true},"id":1}
+```
+
+### getFeeCalculatorForBlockhash
+
+Returns the fee calculator associated with the query blockhash, or null if the blockhash has expired
+
+### Parameters
+
+- `<string>` - query blockhash as a Base58 encoded string
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result will be an RpcResponse JSON object with value equal to:
+
+- `<null>` - if the query blockhash has expired
+- `<object>` - otherwise, a JSON object containing:
+  - `feeCalculator: <object>`, FeeCalculator object describing the cluster fee rate at the queried blockhash
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getFeeCalculatorForBlockhash", "params":["GJxqhuxcgfn5Tcj6y3f8X4FeCDd2RQ6SnEMo1AAxrPRZ"]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":221},"value":{"feeCalculator":{"lamportsPerSignature":5000}}},"id":1}
+```
+
+### getFeeRateGovernor
+
+Returns the fee rate governor information from the root bank
+
+### Parameters
+
+None
+
+### Results
+
+The result field will be an object with the following fields:
+
+- `burnPercent: <u8>`, Percentage of fees collected to be destroyed
+- `maxLamportssPerSignature: <u64>`, Largest value lamportsPerSignature can attain for the next slot
+- `minLamportsPerSignature: <u64>`, Smallest value lamportsPerSignature can attain for the next slot
+- `targetLamportsPerSignature: <u64>`, Desired fee rate for the cluster
+- `targetSignaturesPerSlot: <u64>`, Desired signature rate for the cluster
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getFeeRateGovernor"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":54},"value":{"feeRateGovernor":{"burnPercent":50,"maxLamportsPerSignature":100000,"minLamportsPerSignature":5000,"targetLamportsPerSignature":10000,"targetSignaturesPerSlot":20000}}},"id":1}
+```
+
+### getFees
+
+Returns a recent block hash from the ledger, a fee schedule that can be used to compute the cost of submitting a transaction using it, and the last slot in which the blockhash will be valid.
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` set to a JSON object with the following fields:
+
+- `blockhash: <string>` - a Hash as base-58 encoded string
+- `feeCalculator: <object>` - FeeCalculator object, the fee schedule for this block hash
+- `lastValidSlot: <u64>` - last slot in which a blockhash will be valid
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getFees"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":1},"value":{"blockhash":"CSymwgTNX1j3E4qhKfJAUE41nBWEwXufoYryPbkde5RR","feeCalculator":{"lamportsPerSignature":5000},"lastValidSlot":297}},"id":1}
+```
+
+### getFirstAvailableBlock
+
+Returns the slot of the lowest confirmed block that has not been purged from the ledger
+
+### Parameters
+
+None
+
+### Results
+
+- `<u64>` - Slot
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getFirstAvailableBlock"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":250000,"id":1}
+```
+
+### getGenesisHash
+
+Returns the genesis hash
+
+### Parameters
+
+None
+
+### Results
+
+- `<string>` - a Hash as base-58 encoded string
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getGenesisHash"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":"GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC","id":1}
+```
+
+### getHealth
+
+Returns the current health of the node.
+
+If one or more `--trusted-validator` arguments are provided to `nexis-network-validator`, "ok" is returned when the node has within `HEALTH_CHECK_SLOT_DISTANCE` slots of the highest trusted validator, otherwise an error is returned. "ok" is always returned if no trusted validators are provided.
+
+### Parameters
+
+None
+
+### Results
+
+If the node is healthy: "ok" If the node is unhealthy, a JSON RPC error response is returned. The specifics of the error response are UNSTABLE and may change in the future
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0","id":1, "method":"getHealth"}
+'
+Healthy Result:
+{"jsonrpc":"2.0","result": "ok","id":1}
+Unhealthy Result (generic):
+{
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32005,
+    "message": "Node is unhealthy",
+    "data": {}
+  },
+  "id": 1
+}
+Unhealthy Result (if additional information is available)
+{
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32005,
+    "message": "Node is behind by 42 slots",
+    "data": {
+      "numSlotsBehind": 42
+    }
+  },
+  "id": 1
+}
+```
+
+### getIdentity
+
+Returns the identity pubkey for the current node
+
+### Parameters
+
+None
+
+### Results
+
+The result field will be a JSON object with the following fields:
+
+- `identity`, the identity pubkey of the current node (as a base-58 encoded string)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getIdentity"}' http://localhost:8899
+// Result
+{"jsonrpc":"2.0","result":{"identity": "2r1F4iWqVcb8M1DbAjQuFpebkQHY9hcVU4WuW2DJBppN"},"id":1}
+```
+
+### getInflationGovernor
+
+Returns the current inflation governor
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result field will be a JSON object with the following fields:
+
+- `initial: <f64>`, the initial inflation percentage from time 0
+- `terminal: <f64>`, terminal inflation percentage
+- `taper: <f64>`, rate per year at which inflation is lowered
+- `foundation: <f64>`, percentage of total inflation allocated to the foundation
+- `foundationTerm: <f64>`, duration of foundation pool inflation in years
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getInflationGovernor"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"foundation":0.05,"foundationTerm":7.0,"initial":0.15,"taper":0.15,"terminal":0.015},"id":1}
+```
+
+### getInflationRate
+
+Returns the specific inflation values for the current epoch
+
+### Parameters
+
+None
+
+### Results
+
+The result field will be a JSON object with the following fields:
+
+- `total: <f64>`, total inflation
+- `validator: <f64>`, inflation allocated to validators
+- `foundation: <f64>`, inflation allocated to the foundation
+- `foundation: <f64>`, percentage of total inflation allocated to the foundation
+- `epoch: <f64>`, epoch for which these values are valid
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getInflationRate"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"epoch":100,"foundation":0.001,"total":0.149,"validator":0.148},"id":1}
+```
+
+### getInflationReward
+
+Returns the inflation reward for a list of addresses for an epoch
+
+### Parameters
+
+- `<array>` - An array of addresses to query, as base-58 encoded strings
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - (optional) `epoch: <u64>` - An epoch for which the reward occurs. If omitted, the previous epoch will be used
+
+### Results
+
+The result field will be a JSON array with the following fields:
+
+- `epoch: <u64>`, epoch for which reward occured
+- `effectiveSlot: <u64>`, the slot in which the rewards are effective
+- `amount: <u64>`, reward amount in lamports
+- `foundation: <f64>`, percentage of total inflation allocated to the foundation
+- `postBalance: <u64>`, post balance of the account in lamports
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getInflationReward",
+    "params": [
+       ["6dmNQ5jwLeLk5REvio1JcMshcbvkYMwy26sJ8pbkvStu", "BGsqMegLpV6n6Ve146sSX2dTjUMj3M92HnU8BbNRMhF2"], 2
+    ]
+  }
+'
+Response:
+  {
+    "jsonrpc": "2.0",
+    "result": [
+        {
+            "amount": 2500,
+            "effectiveSlot": 224,
+            "epoch": 2,
+            "postBalance": 499999442500
+        },
+        null
+    ],
+    "id": 1
+  }
+```
+
+### getLargestAccounts
+
+Returns the 20 largest accounts, by lamport balance
+
+### Parameters
+
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - (optional) `filter: <string>` - filter results by account type; currently supported: `circulating|nonCirculating`
+
+### Results
+
+The result will be an RpcResponse JSON object with value equal to an array of:
+
+- `<object>` - otherwise, a JSON object containing:
+  - `address: <string>`, base-58 encoded address of the account
+  - `lamports: <u64>`, number of lamports in the account, as a u64
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getLargestAccounts"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":54},"value":[{"lamports":999974,"address":"99P8ZgtJYe1buSK8JXkvpLh8xPsCFuLYhz9hQFNw93WJ"},{"lamports":42,"address":"uPwWLo16MVehpyWqsLkK3Ka8nLowWvAHbBChqv2FZeL"},{"lamports":42,"address":"aYJCgU7REfu3XF8b3QhkqgqQvLizx8zxuLBHA25PzDS"},{"lamports":42,"address":"CTvHVtQ4gd4gUcw3bdVgZJJqApXE9nCbbbP4VTS5wE1D"},{"lamports":20,"address":"4fq3xJ6kfrh9RkJQsmVd5gNMvJbuSHfErywvEjNQDPxu"},{"lamports":4,"address":"AXJADheGVp9cruP8WYu46oNkRbeASngN5fPCMVGQqNHa"},{"lamports":2,"address":"8NT8yS6LiwNprgW4yM1jPPow7CwRUotddBVkrkWgYp24"},{"lamports":1,"address":"SysvarEpochSchedu1e111111111111111111111111"},{"lamports":1,"address":"11111111111111111111111111111111"},{"lamports":1,"address":"Stake11111111111111111111111111111111111111"},{"lamports":1,"address":"SysvarC1ock11111111111111111111111111111111"},{"lamports":1,"address":"StakeConfig11111111111111111111111111111111"},{"lamports":1,"address":"SysvarRent111111111111111111111111111111111"},{"lamports":1,"address":"Config1111111111111111111111111111111111111"},{"lamports":1,"address":"SysvarStakeHistory1111111111111111111111111"},{"lamports":1,"address":"SysvarRecentB1ockHashes11111111111111111111"},{"lamports":1,"address":"SysvarFees111111111111111111111111111111111"},{"lamports":1,"address":"Vote111111111111111111111111111111111111111"}]},"id":1}
+```
+
+### getLeaderSchedule
+
+Returns the leader schedule for an epoch
+
+### Parameters
+
+- `<u64>` - (optional) Fetch the leader schedule for the epoch that corresponds to the provided slot. If unspecified, the leader schedule for the current epoch is fetched
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `<null>` - if requested epoch is not found
+- `<object>` - otherwise, the result field will be a dictionary of leader public keys (as base-58 encoded strings) and their corresponding leader slot indices as values (indices are to the first slot in the requested epoch)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getLeaderSchedule"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"4Qkev8aNZcqFNSRhQzwyLMFSsi94jHqE8WNVTJzTP99F":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]},"id":1}
+```
+
+### getMaxRetransmitSlot
+
+Get the max slot seen from retransmit stage.
+
+### Results
+
+- `<u64>` - Slot
+
+### Example
+
+```json {{ title: 'Example' }}
+//Request
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0","id":1, "method":"getMaxRetransmitSlot"}
+'
+//Result
+{"jsonrpc":"2.0","result":1234,"id":1}
+```
+
+### getMaxShredInsertSlot
+
+Get the max slot seen from after shred insert.
+
+### Results
+
+- `<u64>` - Slot
+
+### Example
+
+```json {{ title: 'Example' }}
+//Request
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0","id":1, "method":"getMaxShredInsertSlot"}
+'
+
+//Result
+{"jsonrpc":"2.0","result":1234,"id":1}
+```
+
+### getMinimumBalanceForRentExemption
+
+Returns minimum balance required to make account rent exempt.
+
+### Parameters
+
+- `<usize>` - account data length
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `<u64>` - minimum lamports required in account
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getMinimumBalanceForRentExemption", "params":[50]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":500,"id":1}
+```
+
+### getMultipleAccounts
+
+Returns the account information for a list of Pubkeys
+
+### Parameters
+
+- `<array>` - An array of Pubkeys to query, as base-58 encoded strings
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64", or jsonParsed". "base58" is limited to Account data of less than 128 bytes. "base64" will return base64 encoded data for Account data of any size. Parsed-JSON encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If parsed-JSON is requested but a parser cannot be found, the field falls back to base64 encoding, detectable when the data field is type `<string>`. jsonParsed encoding is UNSTABLE
+  - (optional) `dataSlice: <object>` - limit the returned account data using the provided `offset: <usize>` and `length: <usize>` fields; only available for "base58" or "base64" encoding.
+
+### Results
+
+The result will be an RpcResponse JSON object with value equal to:
+
+An array of:
+
+- `<null>` - if the account at that Pubkey doesn't exist
+- `<object>` - otherwise, a JSON object containing:
+  - `lamports: <u64>`, number of lamports assigned to this account, as a u64
+  - `owner: <string>`, base-58 encoded Pubkey of the program this account has been assigned to
+  - `data: <[string, encoding]|object>`, data associated with the account, either as encoded binary data or JSON format `{<program>: <state>}`, depending on encoding parameter
+  - `executable: <bool>`, boolean indicating if the account contains a program (and is strictly read-only)
+  - `rentEpoch: <u64>`, the epoch at which this account will next owe rent, as u64
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getMultipleAccounts", "params":[["vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg", "4fYNw3dojWmQ4dXtSGE9epjRGy9pFSx62YypT7avPYvA"],{"dataSlice":{"offset":0,"length":0}}]}' http://localhost:8899
+
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getMultipleAccounts", "params":[["vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg", "4fYNw3dojWmQ4dXtSGE9epjRGy9pFSx62YypT7avPYvA"],{"encoding": "base58"}]}' http://localhost:8899
+
+// Result
+{
+  "jsonrpc":"2.0",
+  "result":
+  {
+    "context":{"slot":1},
+    "value": [
+      {
+        "data":["AAAAAAEAAAACtzNsyJrW0g==","base64"],
+        "executable":false,
+        "lamports":1000000000,
+        "owner":"11111111111111111111111111111111",
+        "rentEpoch":2
+      },
+      {
+        "data":["","base64"],
+        "executable":false,
+        "lamports":5000000000,
+        "owner":"11111111111111111111111111111111",
+        "rentEpoch":2
+      }
+    ],
+    "id":1
+  }
+}
+
+// Result
+{
+  "jsonrpc":"2.0",
+  "result":
+  {
+    "context":{"slot":1},
+    "value":[
+      {
+        "data":["11116bv5nS2h3y12kD1yUKeMZvGcKLSjQgX6BeV7u1FrjeJcKfsHRTPuR3oZ1EioKtYGiYxpxMG5vpbZLsbcBYBEmZZcMKaSoGx9JZeAuWf","base58"],
+        "executable":false,
+        "lamports":1000000000,
+        "owner":"11111111111111111111111111111111",
+        "rentEpoch":2
+      },
+      {
+        "data":["","base58"],
+        "executable":false,
+        "lamports":5000000000,
+        "owner":"11111111111111111111111111111111",
+        "rentEpoch":2
+      }
+    ],
+    "id":1
+  }
+}
+```
+
+### getProgramAccounts
+
+Returns all accounts owned by the provided program Pubkey
+
+### Parameters
+
+- `<string>` - Pubkey of program, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64" or jsonParsed". Parsed-JSON encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If parsed-JSON is requested but a parser cannot be found, the field falls back to base64 encoding, detectable when the `data` field is type `<string>`. If parsed-JSON is requested for the SPL Token program, when a valid mint cannot be found for a particular account, that account will be filtered out from results. jsonParsed encoding is UNSTABLE
+  - (optional) `dataSlice: <object>` - limit the returned account data using the provided `offset: <usize>` and `length: <usize>` fields; only available for "base58" or "base64" encoding.
+  - (optional) `filters: <array>` - filter results using various [filter objects](https://docs.nexis.com/apps/jsonrpc-api#filters); account must meet all filter criteria to be included in results
+
+### Filters
+
+- `memcmp: <object>` - compares a provided series of bytes with program account data at a particular offset. Fields:
+  - `offset: <usize>` - offset into program account data to start comparison
+  - `bytes: <string>` - data to match, as base-58 encoded string
+- `dataSize: <u64>` - compares the program account data length with the provided data size
+
+### Results
+
+The result field will be an array of JSON objects, which will contain:
+
+- `pubkey: <string>` - the account Pubkey as base-58 encoded string
+- `account: <object>` - a JSON object, with the following sub fields:
+  - `lamports: <u64>`, number of lamports assigned to this account, as a u64
+  - `owner: <string>`, base-58 encoded Pubkey of the program this account has been assigned to `data: <[string,encoding]|object>`, data associated with the account, either as encoded binary data or JSON format `{<program>: <state>}`, depending on encoding parameter
+  - `executable: <bool>`, boolean indicating if the account contains a program (and is strictly read-only)
+  - `rentEpoch: <u64>`, the epoch at which this account will next owe rent, as u64
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getProgramAccounts", "params":["4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T"]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":[{"account":{"data":"2R9jLfiAQ9bgdcw6h8s44439","executable":false,"lamports":15298080,"owner":"4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T","rentEpoch":28},"pubkey":"CxELquR1gPP8wHe33gZ4QxqGB3sZ9RSwsJ2KshVewkFY"}],"id":1}
+
+// Request with Filters
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getProgramAccounts", "params":["4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T", {"filters":[{"dataSize": 17},{"memcmp": {"offset": 4, "bytes": "3Mc6vR"}}]}]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":[{"account":{"data":"2R9jLfiAQ9bgdcw6h8s44439","executable":false,"lamports":15298080,"owner":"4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T","rentEpoch":28},"pubkey":"CxELquR1gPP8wHe33gZ4QxqGB3sZ9RSwsJ2KshVewkFY"}],"id":1}
+```
+
+### getRecentBlockhash
+
+Returns a recent block hash from the ledger, and a fee schedule that can be used to compute the cost of submitting a transaction using it.
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+An RpcResponse containing a JSON object consisting of a string blockhash and FeeCalculator JSON object.
+
+- `RpcResponse<object>` - RpcResponse JSON object with value field set to a JSON object including:
+- `blockhash: <string>` - a Hash as base-58 encoded string
+- `feeCalculator: <object>` - FeeCalculator object, the fee schedule for this block hash
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getRecentBlockhash"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":1},"value":{"blockhash":"CSymwgTNX1j3E4qhKfJAUE41nBWEwXufoYryPbkde5RR","feeCalculator":{"lamportsPerSignature":5000}}},"id":1}
+```
+
+### getRecentPerformanceSamples
+
+Returns a list of recent performance samples, in reverse slot order. Performance samples are taken every 60 seconds and include the number of transactions and slots that occur in a given time window.
+
+### Parameters
+
+- `limit: <usize>` - (optional) number of samples to return (maximum 720)
+
+### Results
+
+An array of:
+
+- `RpcPerfSample<object>`
+  - `slot: <u64>` - Slot in which sample was taken at
+  - `numTransactions: <u64>` - Number of transactions in sample
+  - `numSlots: <u64>` - Number of slots in sample
+  - `samplePeriodSecs: <u16>` - Number of seconds in a sample window
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0", "id":1, "method":"getRecentPerformanceSamples", "params": [4]}
+'
+Result:
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "numSlots": 126,
+      "numTransactions": 126,
+      "samplePeriodSecs": 60,
+      "slot": 348125
+    },
+    {
+      "numSlots": 126,
+      "numTransactions": 126,
+      "samplePeriodSecs": 60,
+      "slot": 347999
+    },
+    {
+      "numSlots": 125,
+      "numTransactions": 125,
+      "samplePeriodSecs": 60,
+      "slot": 347873
+    },
+    {
+      "numSlots": 125,
+      "numTransactions": 125,
+      "samplePeriodSecs": 60,
+      "slot": 347748
+    }
+  ],
+  "id": 1
+}
+```
+
+### getSnapshotSlot
+
+Returns the highest slot that the node has a snapshot for
+
+### Parameters
+
+None
+
+### Results
+
+- `<u64>` - Snapshot slot
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0","id":1, "method":"getSnapshotSlot"}
+'
+Result:
+{"jsonrpc":"2.0","result":100,"id":1}
+Result when the node has no snapshot:
+{"jsonrpc":"2.0","error":{"code":-32008,"message":"No snapshot"},"id":1}
+```
+
+### getSignatureStatuses
+
+Returns the statuses of a list of signatures. Unless the `searchTransactionHistory` configuration parameter is included, this method only searches the recent status cache of signatures, which retains statuses for all active slots plus `MAX_RECENT_BLOCKHASHES` rooted slots.
+
+### Parameters
+
+- `<array>` - An array of transaction signatures to confirm, as base-58 encoded strings
+- `<object>` - (optional) Configuration object containing the following field:
+  - `searchTransactionHistory: <bool>` - if true, a Nexis Network node will search its ledger cache for any signatures not found in the recent status cache
+
+### Results
+
+An RpcResponse containing a JSON object consisting of an array of TransactionStatus objects.
+
+- `RpcResponse<object>` - RpcResponse JSON object with value field:
+
+An array of:
+
+- `<null>` - Unknown transaction
+- `<object>`
+  - `slot: <u64>` - The slot the transaction was processed
+  - `confirmations: <usize | null>` - Number of blocks since signature confirmation, null if rooted, as well as finalized by a supermajority of the cluster
+  - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+  - DEPRECATED: `status: <object>` - Transaction status
+    - `"Ok": <null>` - Transaction was successful
+    - `"Err": <ERR>` - Transaction failed with TransactionError
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getSignatureStatuses", "params":[["5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW", "5j7s6NiJS3JAkvgkoc18WVAsiSaci2pxB2A6ueCJP4tprA2TFg9wSyTLeYouxPBJEMzJinENTkpA52YStRW5Dia7"]]}' http://localhost:8899
+
+// Request with configuration
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getSignatureStatuses", "params":[["5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW"], {"searchTransactionHistory": true}]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"context":{"slot":82},"value":[{"slot": 72, "confirmations": 10, "err": null, "status": {"Ok": null}}, null]},"id":1}
+
+// Result, first transaction rooted
+{"jsonrpc":"2.0","result":{"context":{"slot":82},"value":[{"slot": 48, "confirmations": null, "err": null, "status": {"Ok": null}}, null]},"id":1}
+```
+
+### getSlot
+
+Returns the current slot the node is processing
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `<u64>` - Current slot
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getSlot"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":1234,"id":1}
+```
+
+### getSlotLeader
+
+Returns the current slot leader
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `<string>` - Node identity Pubkey as base-58 encoded string
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getSlotLeader"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":"ENvAW7JScgYq6o4zKZwewtkzzJgDzuJAFxYasvmEQdpS","id":1}
+```
+
+### getSlotLeaders
+
+Returns the slot leaders for a given slot range
+
+### Parameters
+
+- `<u64>` - Start slot, as u64 integer
+- `<u64>` - Limit, as u64 integer
+
+### Results
+
+- `<array<string>>` - Node identity public keys as base-58 encoded strings
+
+### Example
+
+```json {{ title: 'Example' }}
+If the current slot is #99, query the next 10 leaders with the following request:
+
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0","id":1, "method":"getSlotLeaders", "params":[100, 10]}
+'
+Result:
+The first leader returned is the leader for slot #100:
+{
+  "jsonrpc": "2.0",
+  "result": [
+    "ChorusmmK7i1AxXeiTtQgQZhQNiXYU84ULeaYF1EH15n",
+    "ChorusmmK7i1AxXeiTtQgQZhQNiXYU84ULeaYF1EH15n",
+    "ChorusmmK7i1AxXeiTtQgQZhQNiXYU84ULeaYF1EH15n",
+    "ChorusmmK7i1AxXeiTtQgQZhQNiXYU84ULeaYF1EH15n",
+    "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+    "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+    "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+    "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+    "DWvDTSh3qfn88UoQTEKRV2JnLt5jtJAVoiCo3ivtMwXP",
+    "DWvDTSh3qfn88UoQTEKRV2JnLt5jtJAVoiCo3ivtMwXP"
+  ],
+  "id": 1
+}
+```
+
+### getStakeActivation
+
+Returns epoch activation information for a stake account
+
+### Parameters
+
+- `<string>` - Pubkey of stake account to query, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - (optional) `epoch: <u64>` - epoch for which to calculate activation details. If parameter not provided, defaults to current epoch.
+
+### Results
+
+The result will be a JSON object with the following fields:
+
+- `state: <string` - the stake account's activation state, one of: `active`, `inactive`, `activating`, `deactivating`
+- `active: <u64>` - stake active during the epoch
+- `inactive: <u64>` - stake inactive during the epoch
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getStakeActivation", "params": ["CYRJWqiSjLitBAcRxPvWpgX3s5TvmN2SuRY3eEYypFvT"]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"active":197717120,"inactive":0,"state":"active"},"id":1}
+
+// Request with Epoch
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getStakeActivation", "params": ["CYRJWqiSjLitBAcRxPvWpgX3s5TvmN2SuRY3eEYypFvT", {"epoch": 4}]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"active":124429280,"inactive":73287840,"state":"activating"},"id":1}
+```
+
+### getSupply
+
+Returns information about the current supply.
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result will be an RpcResponse JSON object with value equal to a JSON object containing:
+
+- `total: <u64>` - Total supply in lamports
+- `circulating: <u64>` - Circulating supply in lamports
+- `nonCirculating: <u64>` - Non-circulating supply in lamports
+- `nonCirculatingAccounts: <array>` - an array of account addresses of non-circulating accounts, as strings
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0", "id":1, "method":"getSupply"}' http://localhost:8899
+
+// Result
+{
+  "jsonrpc":"2.0",
+  "result": {
+    "context": {"slot":1114},
+    "value": {
+      "circulating": 16000,
+      "nonCirculating": 1000000,
+      "nonCirculatingAccounts": [
+        "FEy8pTbP5fEoqMV1GdTz83byuA8EKByqYat1PKDgVAq5",
+        "9huDUZfxoJ7wGMTffUE7vh1xePqef7gyrLJu9NApncqA",
+        "3mi1GmwEE3zo2jmfDuzvjSX9ovRXsDUKHvsntpkhuLJ9",
+        "BYxEJTDerkaRWBem3XgnVcdhppktBXa2HbkHPKj2Ui4Z"
+      ],
+      "total":1016000
+    }
+  },
+  "id": 1
+}
+```
+
+## getTokenAccountBalance
+
+Returns the token balance of an SPL Token account.
+
+### Parameters
+
+- `<string>` - Pubkey of Token account to query, as base-58 encoded string
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` equal to a JSON object containing:
+
+- `amount: <string>` - the raw balance without decimals, a string representation of u64
+- `decimals: <u8>` - number of base 10 digits to the right of the decimal place
+- `uiAmount: <number | null>` - the balance, using mint-prescribed decimals DEPRECATED
+- `uiAmountString: <string>` - the balance as a string, using mint-prescribed decimals
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0", "id":1, "method":"getTokenAccountBalance", "params": ["7fUAJdStEuGbc3sM84cKRL6yYaaSstyLSU4ve5oovLS7"]}
+'
+Result:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 1114
+    },
+    "value": {
+      "amount": "9864",
+      "decimals": 2,
+      "uiAmount": 98.64,
+      "uiAmountString": "98.64",
+    },
+    "id": 1
+  }
+}
+```
+
+## getTokenAccountsByDelegate
+
+Returns all SPL Token accounts by approved Delegate. UNSTABLE
+
+### Parameters
+
+- `<string>` - Pubkey of account delegate to query, as base-58 encoded string
+- `<object>` - Either:
+  - `mint: <string>` - Pubkey of the specific token Mint to limit accounts to, as base-58 encoded string; or
+  - `programId: <string>` - Pubkey of the Token program ID that owns the accounts, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64", "base64+zstd" or "jsonParsed". "jsonParsed" encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If "jsonParsed" is requested but a valid mint cannot be found for a particular account, that account will be filtered out from results.
+  - (optional) `dataSlice: <object>` - limit the returned account data using the provided `offset: <usize>` and `length: <usize>` fields; only available for "base58","base64" or "base64+zstd" encodings.
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` equal to an array of JSON objects, which will contain:
+
+- `pubkey: <string>` - the account Pubkey as base-58 encoded string
+- `account: <object>` - a JSON object, with the following sub fields:
+  - `lamports: <u64>`, number of lamports assigned to this account, as a u64
+  - `owner: <string>`, base-58 encoded Pubkey of the program this account has been assigned to
+  - `data: <object>`, Token state data associated with the account, either as encoded binary data or in JSON format `{<program>: <state>}`
+  - `executable: <bool>`, boolean indicating if the account contains a program (and is strictly read-only)
+  - `rentEpoch: <u64>`, the epoch at which this account will next owe rent, as u64
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getTokenAccountsByDelegate",
+    "params": [
+      "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T",
+      {
+        "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+      },
+      {
+        "encoding": "jsonParsed"
+      }
+    ]
+  }
+'
+Result:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 1114
+    },
+    "value": [
+      {
+        "data": {
+          "program": "spl-token",
+          "parsed": {
+            "accountType": "account",
+            "info": {
+              "tokenAmount": {
+                "amount": "1",
+                "decimals": 1,
+                "uiAmount": 0.1,
+                "uiAmountString": "0.1",
+              },
+              "delegate": "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T",
+              "delegatedAmount": 1,
+              "isInitialized": true,
+              "isNative": false,
+              "mint": "3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E",
+              "owner": "CnPoSPKXu7wJqxe59Fs72tkBeALovhsCxYeFwPCQH9TD"
+            }
+          }
+        },
+        "executable": false,
+        "lamports": 1726080,
+        "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "rentEpoch": 4
+      }
+    ]
+  },
+  "id": 1
+}
+```
+
+## getTokenAccountsByOwner
+
+Returns all SPL Token accounts by token owner.
+
+### Parameters
+
+- `<string>` - Pubkey of account owner to query, as base-58 encoded string
+- `<object>` - Either:
+  - `mint: <string>` - Pubkey of the specific token Mint to limit accounts to, as base-58 encoded string; or
+  - `programId: <string>` - Pubkey of the Token program ID that owns the accounts, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64", "base64+zstd" or "jsonParsed". "jsonParsed" encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If "jsonParsed" is requested but a valid mint cannot be found for a particular account, that account will be filtered out from results.
+  - (optional) `dataSlice: <object>` - limit the returned account data using the provided `offset: <usize>` and `length: <usize>` fields; only available for "base58","base64" or "base64+zstd" encodings.
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` equal to an array of JSON objects, which will contain:
+
+- `pubkey: <string>` - the account Pubkey as base-58 encoded string
+- `account: <object>` - a JSON object, with the following sub fields:
+  - `lamports: <u64>`, number of lamports assigned to this account, as a u64
+  - `owner: <string>`, base-58 encoded Pubkey of the program this account has been assigned to
+  - `data: <object>`, Token state data associated with the account, either as encoded binary data or in JSON format `{<program>: <state>}`
+  - `executable: <bool>`, boolean indicating if the account contains a program (and is strictly read-only)
+  - `rentEpoch: <u64>`, the epoch at which this account will next owe rent, as u64
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getTokenAccountsByOwner",
+    "params": [
+      "4Qkev8aNZcqFNSRhQzwyLMFSsi94jHqE8WNVTJzTP99F",
+      {
+        "mint": "3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E"
+      },
+      {
+        "encoding": "jsonParsed"
+      }
+    ]
+  }
+'
+Result:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 1114
+    },
+    "value": [
+      {
+        "data": {
+          "program": "spl-token",
+          "parsed": {
+            "accountType": "account",
+            "info": {
+              "tokenAmount": {
+                "amount": "1",
+                "decimals": 1,
+                "uiAmount": 0.1,
+                "uiAmountString": "0.1",
+              },
+              "delegate": null,
+              "delegatedAmount": 1,
+              "isInitialized": true,
+              "isNative": false,
+              "mint": "3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E",
+              "owner": "4Qkev8aNZcqFNSRhQzwyLMFSsi94jHqE8WNVTJzTP99F"
+            }
+          }
+        },
+        "executable": false,
+        "lamports": 1726080,
+        "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "rentEpoch": 4
+      }
+    ]
+  },
+  "id": 1
+}
+```
+
+## getTokenLargestAccounts
+
+Returns the 20 largest accounts of a particular SPL Token type.
+
+### Parameters
+
+- `<string>` - Pubkey of token Mint to query, as base-58 encoded string
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` equal to an array of JSON objects containing:
+
+- `address: <string>` - the address of the token account
+- `amount: <string>` - the raw token account balance without decimals, a string representation of u64
+- `decimals: <u8>` - number of base 10 digits to the right of the decimal place
+- `uiAmount: <number | null>` - the token account balance, using mint-prescribed decimals DEPRECATED
+- `uiAmountString: <string>` - the token account balance as a string, using mint-prescribed decimals
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0", "id":1, "method":"getTokenLargestAccounts", "params": ["3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E"]}
+'
+Result:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 1114
+    },
+    "value": [
+      {
+        "address": "FYjHNoFtSQ5uijKrZFyYAxvEr87hsKXkXcxkcmkBAf4r",
+        "amount": "771",
+        "decimals": 2,
+        "uiAmount": 7.71,
+        "uiAmountString": "7.71"
+      },
+      {
+        "address": "BnsywxTcaYeNUtzrPxQUvzAWxfzZe3ZLUJ4wMMuLESnu",
+        "amount": "229",
+        "decimals": 2,
+        "uiAmount": 2.29,
+        "uiAmountString": "2.29"
+      }
+    ]
+  },
+  "id": 1
+}
+```
+
+## getTokenSupply
+
+Returns the total supply of an SPL Token type.
+
+### Parameters
+
+- `<string>` - Pubkey of token Mint to query, as base-58 encoded string
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result will be an RpcResponse JSON object with `value` equal to a JSON object containing:
+
+- `amount: <string>` - the raw total token supply without decimals, a string representation of u64
+- `decimals: <u8>` - number of base 10 digits to the right of the decimal place
+- `uiAmount: <number | null>` - the total token supply, using mint-prescribed decimals DEPRECATED
+- `uiAmountString: <string>` - the total token supply as a string, using mint-prescribed decimals
+
+### Example
+
+```json {{ title: 'Example' }}
+Request:
+curl http://localhost:8899 -X POST -H "Content-Type: application/json" -d '
+  {"jsonrpc":"2.0", "id":1, "method":"getTokenSupply", "params": ["3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E"]}
+'
+Result:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 1114
+    },
+    "value": {
+      "amount": "100000",
+      "decimals": 2,
+      "uiAmount": 1000,
+      "uiAmountString": "1000",
+    }
+  },
+  "id": 1
+}
+```
+
+## getTransactionCount
+
+Returns the current Transaction count from the ledger
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `<u64>` - count
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getTransactionCount"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":268,"id":1}
+```
+
+## getVersion
+
+Returns the current Nexis Network versions running on the node
+
+### Parameters
+
+None
+
+### Results
+
+The result field will be a JSON object with the following fields:
+
+- `solana-core`, software version of solana-core
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getVersion"}' http://localhost:8899
+// Result
+{"jsonrpc":"2.0","result":{"solana-core": "1.4.0"},"id":1}
+```
+
+## getVoteAccounts
+
+Returns the account info and associated stake for all the voting accounts in the current bank.
+
+### Parameters
+
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+The result field will be a JSON object of `current` and `delinquent` accounts, each containing an array of JSON objects with the following sub fields:
+
+- `votePubkey: <string>` - Vote account public key, as base-58 encoded string
+- `nodePubkey: <string>` - Node public key, as base-58 encoded string
+- `activatedStake: <u64>` - the stake, in lamport, delegated to this vote account and active in this epoch
+- `epochVoteAccount: <bool>` - bool, whether the vote account is staked for this epoch
+- `commission: <number>`, percentage (0-100) of rewards payout owed to the vote account
+- `lastVote: <u64>` - Most recent slot voted on by this vote account
+- `epochCredits: <array>` - History of how many credits earned by the end of each epoch, as an array of arrays containing: `[epoch, credits, previousCredits]`
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getVoteAccounts"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":{"current":[{"commission":0,"epochVoteAccount":true,"epochCredits":[[1,64,0],[2,192,64]],"nodePubkey":"B97CCUW3AEZFGy6uUg6zUdnNYvnVq5VG8PUtb2HayTDD","lastVote":147,"activatedStake":42,"votePubkey":"3ZT31jkAGhUaw8jsy4bTknwBMP8i4Eueh52By4zXcsVw"}],"delinquent":[{"commission":127,"epochVoteAccount":false,"epochCredits":[],"nodePubkey":"6ZPxeQaDo4bkZLRsdNrCzchNQr5LN9QMc9sipXv9Kw8f","lastVote":0,"activatedStake":0,"votePubkey":"CmgCk4aMS7KW1SHX3s9K5tBJ6Yng2LBaC8MFov4wx9sm"}]},"id":1}
+```
+
+## minimumLedgerSlot
+
+Returns the lowest slot that the node has information about in its ledger. This value may increase over time if the node is configured to purge older ledger data
+
+### Parameters
+
+None
+
+### Results
+
+- `u64` - Minimum ledger slot
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"minimumLedgerSlot"}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":1234,"id":1}
+```
+
+## requestAirdrop
+
+Requests an airdrop of lamports to a Pubkey
+
+### Parameters
+
+- `<string>` - Pubkey of account to receive lamports, as base-58 encoded string
+- `<integer>` - lamports, as a u64
+- `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment) (used for retrieving blockhash and verifying airdrop success)
+
+### Results
+
+- `<string>` - Transaction Signature of airdrop, as base-58 encoded string
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"requestAirdrop", "params":["83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri", 50]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":"5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW","id":1}
+```
+
+## sendTransaction
+
+Submits a signed transaction to the cluster for processing.
+
+Before submitting, the following preflight checks are performed:
+
+1. The transaction signatures are verified
+2. The transaction is simulated against the latest max confirmed bank and on failure an error will be returned. Preflight checks may be disabled if desired.
+
+### Parameters
+
+- `<string>` - fully-signed Transaction, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following field:
+  - `skipPreflight: <bool>` - if true, skip the preflight transaction checks (default: false)
+  - `preflightCommitment: <string>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment) level to use for preflight (default: `"max"`).
+
+### Results
+
+- `<string>` - Transaction Signature, as base-58 encoded string
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"sendTransaction", "params":["4hXTCkRzt9WyecNzV1XPgCDfGAZzQKNxLXgynz5QDuWWPSAZBZSHptvWRL3BjCvzUXRdKvHL2b7yGrRQcWyaqsaBCncVG7BFggS8w9snUts67BSh3EqKpXLUm5UMHfD7ZBe9GhARjbNQMLJ1QD3Spr6oMTBU6EhdB4RD8CP2xUxr2u3d6fos36PD98XS6oX8TQjLpsMwncs5DAMiD4nNnR8NBfyghGCWvCVifVwvA8B8TJxE1aiyiv2L429BCWfyzAme5sZW8rDb14NeCQHhZbtNqfXhcp2tAnaAT"]}' http://localhost:8899
+
+// Result
+{"jsonrpc":"2.0","result":"2id3YC2jK9G5Wo2phDx4gJVAew8DcY5NAojnVuao8rkxwPYPe8cSwE5GzhEgJA2y8fVjDEo6iR6ykBvDxrTQrtpb","id":1}
+```
+
+## simulateTransaction
+
+Simulate sending a transaction
+
+#### Parameters
+
+- `<string>` - Transaction, as base-58 encoded string. The transaction must have a valid blockhash, but is not required to be signed.
+- `<object>` - (optional) Configuration object containing the following field:
+  - `sigVerify: <bool>` - if true the transaction signatures will be verified (default: false)
+  - `commitment: <string>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment) level to simulate the transaction at (default: `"max"`).
+
+### Results
+
+An RpcResponse containing a TransactionStatus object The result will be an RpcResponse JSON object with `value` set to a JSON object with the following fields:
+
+- `err: <object | string | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+- `logs: <array | null>` - Array of log messages the transaction instructions output during execution, null if simulation failed before the transaction was able to execute (for example due to an invalid blockhash or signature verification failure)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"simulateTransaction", "params":["4hXTCkRzt9WyecNzV1XPgCDfGAZzQKNxLXgynz5QDuWWPSAZBZSHptvWRL3BjCvzUXRdKvHL2b7yGrRQcWyaqsaBCncVG7BFggS8w9snUts67BSh3EqKpXLUm5UMHfD7ZBe9GhARjbNQMLJ1QD3Spr6oMTBU6EhdB4RD8CP2xUxr2u3d6fos36PD98XS6oX8TQjLpsMwncs5DAMiD4nNnR8NBfyghGCWvCVifVwvA8B8TJxE1aiyiv2L429BCWfyzAme5sZW8rDb14NeCQHhZbtNqfXhcp2tAnaAT"]}' http://localhost:8899
+
+// Result
+{
+  "jsonrpc":"2.0",
+  "result": {
+    "context": {"slot":218},
+    "value": {
+      "err":null,
+      "logs": ["BPF program 83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri success"]
+    },
+    "id":1
+  }
+}
+```
+
+## Subscription Websocket
+
+After connecting to the RPC PubSub websocket at `ws://<ADDRESS>/`:
+
+- Submit subscription requests to the websocket using the methods below
+- Multiple subscriptions may be active at once
+- Many subscriptions take the optional [commitment parameter](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment), defining how finalized a change should be to trigger a notification. For subscriptions, if commitment is unspecified, the default value is `"single"`.
+
+### accountSubscribe
+
+Subscribe to an account to receive notifications when the lamports or data for a given account public key changes
+
+### Parameters
+
+- `<string>` - account Pubkey, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - `<object>` - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64" or jsonParsed". Parsed-JSON encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If parsed-JSON is requested but a parser cannot be found, the field falls back to binary encoding, detectable when the `data` field is type `<string>`. jsonParsed encoding is UNSTABLE
+
+### Results
+
+- `<number>` - Subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"accountSubscribe", "params":["CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12", {"encoding":"base58"}]}
+
+{"jsonrpc":"2.0", "id":1, "method":"accountSubscribe", "params":["CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12", {"encoding":"base64", "commitment": "single"}]}
+
+{"jsonrpc":"2.0", "id":1, "method":"accountSubscribe", "params":["CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12", {"encoding":"jsonParsed"}]}
+
+// Result
+{"jsonrpc": "2.0","result": 23784,"id": 1}
+Notification Format:#
+// Base58 encoding
+{
+  "jsonrpc": "2.0",
+  "method": "accountNotification",
+  "params": {
+    "result": {
+      "context": {
+        "slot": 5199307
+      },
+      "value": {
+        "data": ["11116bv5nS2h3y12kD1yUKeMZvGcKLSjQgX6BeV7u1FrjeJcKfsHPXHRDEHrBesJhZyqnnq9qJeUuF7WHxiuLuL5twc38w2TXNLxnDbjmuR", "base58"],
+        "executable": false,
+        "lamports": 33594,
+        "owner": "11111111111111111111111111111111",
+        "rentEpoch": 635
+      }
+    },
+    "subscription": 23784
+  }
+}
+
+// Parsed-JSON encoding
+{
+  "jsonrpc": "2.0",
+  "method": "accountNotification",
+  "params": {
+    "result": {
+      "context": {
+        "slot": 5199307
+      },
+      "value": {
+        "data": {
+           "program": "nonce"
+           "parsed": {
+              "type": "initialized",
+              "info": {
+                 "authority": "Bbqg1M4YVVfbhEzwA9SpC9FhsaG83YMTYoR4a8oTDLX",
+                 "blockhash": "LUaQTmM7WbMRiATdMMHaRGakPtCkc2GHtH57STKXs6k",
+                 "feeCalculator": {
+                    "lamportsPerSignature": 5000
+                 }
+              }
+           }
+        },
+        "executable": false,
+        "lamports": 33594,
+        "owner": "11111111111111111111111111111111",
+        "rentEpoch": 635
+      }
+    },
+    "subscription": 23784
+  }
+}
+```
+
+## accountUnsubscribe
+
+Unsubscribe from account change notifications
+
+### Parameters
+
+- `<number>` - id of account Subscription to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"accountUnsubscribe", "params":[0]}
+
+// Result
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## programSubscribe
+
+Subscribe to a program to receive notifications when the lamports or data for a given account owned by the program changes
+
+### Parameters
+
+- `<string>` - program_id Pubkey, as base-58 encoded string
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+  - `encoding: <string>` - encoding for Account data, either "base58" (slow), "base64" or jsonParsed". Parsed-JSON encoding attempts to use program-specific state parsers to return more human-readable and explicit account state data. If parsed-JSON is requested but a parser cannot be found, the field falls back to base64 encoding, detectable when the `data` field is type `<string>`. jsonParsed encoding is UNSTABLE
+  - (optional) `filters: <array>` - filter results using various [filter objects](https://docs.nexis.com/apps/jsonrpc-api#filters); account must meet all filter criteria to be included in results
+
+### Results
+
+- `<integer>` - Subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"programSubscribe", "params":["11111111111111111111111111111111", {"encoding":"base64", "commitment": "single"}]}
+
+{"jsonrpc":"2.0", "id":1, "method":"programSubscribe", "params":["11111111111111111111111111111111", {"encoding":"jsonParsed"}]}
+
+{"jsonrpc":"2.0", "id":1, "method":"programSubscribe", "params":["11111111111111111111111111111111", {"encoding":"base64", "filters":[{"dataSize":80}]}]}
+
+// Result
+{"jsonrpc": "2.0","result": 24040,"id": 1}
+Notification Format:#
+// Base58 encoding
+{
+  "jsonrpc": "2.0",
+  "method": "programNotification",
+  "params": {
+    "result": {
+      "context": {
+        "slot": 5208469
+      },
+      "value": {
+        "pubkey": "H4vnBqifaSACnKa7acsxstsY1iV1bvJNxsCY7enrd1hq"
+        "account": {
+          "data": ["11116bv5nS2h3y12kD1yUKeMZvGcKLSjQgX6BeV7u1FrjeJcKfsHPXHRDEHrBesJhZyqnnq9qJeUuF7WHxiuLuL5twc38w2TXNLxnDbjmuR", "base58"],
+          "executable": false,
+          "lamports": 33594,
+          "owner": "11111111111111111111111111111111",
+          "rentEpoch": 636
+        },
+      }
+    },
+    "subscription": 24040
+  }
+}
+
+// Parsed-JSON encoding
+{
+  "jsonrpc": "2.0",
+  "method": "programNotification",
+  "params": {
+    "result": {
+      "context": {
+        "slot": 5208469
+      },
+      "value": {
+        "pubkey": "H4vnBqifaSACnKa7acsxstsY1iV1bvJNxsCY7enrd1hq"
+        "account": {
+          "data": {
+             "program": "nonce"
+             "parsed": {
+                "type": "initialized",
+                "info": {
+                   "authority": "Bbqg1M4YVVfbhEzwA9SpC9FhsaG83YMTYoR4a8oTDLX",
+                   "blockhash": "LUaQTmM7WbMRiATdMMHaRGakPtCkc2GHtH57STKXs6k",
+                   "feeCalculator": {
+                      "lamportsPerSignature": 5000
+                   }
+                }
+             }
+          },
+          "executable": false,
+          "lamports": 33594,
+          "owner": "11111111111111111111111111111111",
+          "rentEpoch": 636
+        },
+      }
+    },
+    "subscription": 24040
+  }
+}
+```
+
+## logsSubscribe
+
+Subscribe to transaction logging
+
+### Parameters
+
+- `filter: <string>|<object>` - filter criteria for the logs to receive results by account type; currently supported:
+  - `all` - subscribe to all transactions except for simple vote transactions
+  - `allWithVotes` - subscribe to all transactions including simple vote transactions
+  - `{ "mentions": [ <string> ] }` - subscribe to all transactions that mention the provided Pubkey (as base-58 encoded string)
+- `<object>` - (optional) Configuration object containing the following optional fields:
+  - (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `<integer>` - Subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "logsSubscribe",
+  "params": [
+    {
+      "mentions": [ "11111111111111111111111111111111" ]
+    },
+    {
+      "commitment": "finalized"
+    }
+  ]
+}
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "logsSubscribe",
+  "params": [ "all" ]
+}
+
+// Result
+{"jsonrpc": "2.0","result": 24040,"id": 1}
+Notification Format:#
+// Base58 encoding
+{
+  "jsonrpc": "2.0",
+  "method": "logsNotification",
+  "params": {
+    "result": {
+      "context": {
+        "slot": 5208469
+      },
+      "value": {
+        "signature": "5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqokgpiKRLuS83KUxyZyv2sUYv",
+        "err": null,
+        "logs": [
+          "BPF program 83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri success"
+        ]
+      }
+    },
+    "subscription": 24040
+  }
+}
+```
+
+## logsUnsubscribe
+
+Unsubscribe from transaction logging
+
+### Parameters
+
+- `<integer>` - id of subscription to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request:
+{"jsonrpc":"2.0", "id":1, "method":"logsUnsubscribe", "params":[0]}
+
+// Result:
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## programUnsubscribe
+
+Unsubscribe from program-owned account change notifications
+
+### Parameters
+
+- `<integer>` - id of account Subscription to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"programUnsubscribe", "params":[0]}
+
+// Result
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## signatureSubscribe
+
+Subscribe to a transaction signature to receive notification when the transaction is confirmed On `signatureNotification`, the subscription is automatically cancelled
+
+### Parameters
+
+- `<string>` - Transaction Signature, as base-58 encoded string
+- (optional) [Commitment](https://docs.nexis.com/apps/jsonrpc-api#configuring-state-commitment)
+
+### Results
+
+- `integer` - subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"signatureSubscribe", "params":["2EBVM6cB8vAAD93Ktr6Vd8p67XPbQzCJX47MpReuiCXJAtcjaxpvWpcg9Ege1Nr5Tk3a2GFrByT7WPBjdsTycY9b"]}
+
+{"jsonrpc":"2.0", "id":1, "method":"signatureSubscribe", "params":["2EBVM6cB8vAAD93Ktr6Vd8p67XPbQzCJX47MpReuiCXJAtcjaxpvWpcg9Ege1Nr5Tk3a2GFrByT7WPBjdsTycY9b", {"commitment": "max"}]}
+
+// Result
+{"jsonrpc": "2.0","result": 0,"id": 1}
+Notification Format:#
+{
+  "jsonrpc": "2.0",
+  "method": "signatureNotification",
+  "params": {
+    "result": {
+      "context": {
+        "slot": 5207624
+      },
+      "value": {
+        "err": null
+      }
+    },
+    "subscription": 24006
+  }
+}
+```
+
+## signatureUnsubscribe
+
+Unsubscribe from signature confirmation notification
+
+### Parameters
+
+- `<integer>` - subscription id to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"signatureUnsubscribe", "params":[0]}
+
+// Result
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## slotSubscribe
+
+Subscribe to receive notification anytime a slot is processed by the validator
+
+### Parameters
+
+None
+
+### Results
+
+- `integer` - subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"slotSubscribe"}
+
+// Result
+{"jsonrpc": "2.0","result": 0,"id": 1}
+```
+
+## Notification Format
+
+Subscribe to receive notification anytime a slot is processed by the validator
+
+### Parameters
+
+None
+
+### Results
+
+- `integer` - subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"slotSubscribe"}
+
+// Result
+{"jsonrpc": "2.0","result": 0,"id": 1}
+```
+
+## Notification Format
+
+```json {{ title: '' }}
+{
+  "jsonrpc": "2.0",
+  "method": "slotNotification",
+  "params": {
+    "result": {
+      "parent": 75,
+      "root": 44,
+      "slot": 76
+    },
+    "subscription": 0
+  }
+}
+```
+
+## slotUnsubscribe
+
+Unsubscribe from slot notifications
+
+### Parameters
+
+- `<integer>` - subscription id to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"slotUnsubscribe", "params":[0]}
+
+// Result
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## rootSubscribe
+
+Subscribe to receive notification anytime a new root is set by the validator.
+
+### Parameters
+
+None
+
+### Results
+
+- `integer` - subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"rootSubscribe"}
+
+// Result
+{"jsonrpc": "2.0","result": 0,"id": 1}
+```
+
+## Notification Format
+
+The result is the latest root slot number.
+
+```json {{ title: '' }}
+{
+  "jsonrpc": "2.0",
+  "method": "rootNotification",
+  "params": {
+    "result": 42,
+    "subscription": 0
+  }
+}
+```
+
+## rootUnsubscribe
+
+Unsubscribe from root notifications
+
+### Parameters
+
+- `<integer>` - subscription id to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"rootUnsubscribe", "params":[0]}
+
+// Result
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## voteSubscribe - Unstable, disabled by default
+
+This subscription is unstable and only available if the validator was started with the `--rpc-pubsub-enable-vote-subscription` flag. The format of this subscription may change in the future.
+
+Subscribe to receive notification anytime a new vote is observed in gossip. These votes are pre-consensus therefore there is no guarantee these votes will enter the ledger.
+
+### Parameters
+
+None
+
+### Results
+
+- `integer` - subscription id (needed to unsubscribe)
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"voteSubscribe"}
+
+// Result
+{"jsonrpc": "2.0","result": 0,"id": 1}
+```
+
+## Notification Format
+
+The result is the latest vote, containing its hash, a list of voted slots, and an optional timestamp.
+
+```json {{ title: '' }}
+{
+  "jsonrpc": "2.0",
+  "method": "voteNotification",
+  "params": {
+    "result": {
+      "hash": "8Rshv2oMkPu5E4opXTRyuyBeZBqQ4S477VG26wUTFxUM",
+      "slots": [1, 2],
+      "timestamp": null
+    },
+    "subscription": 0
+  }
+}
+```
+
+## voteUnsubscribe
+
+Unsubscribe from vote notifications
+
+### Parameters
+
+- `<integer>` - subscription id to cancel
+
+### Results
+
+- `<bool>` - unsubscribe success message
+
+### Example
+
+```json {{ title: 'Example' }}
+// Request
+{"jsonrpc":"2.0", "id":1, "method":"voteUnsubscribe", "params":[0]}
+
+// Result
+{"jsonrpc": "2.0","result": true,"id": 1}
+```
+
+## JavaScript API
+
+This is the Nexis Network Javascript API built on [JSON RPC API](https://docs.nexis.com/apps/javascript-api)
+
+## Installation
+
+<CodeGroup>
+
+```bash {{ title: 'yarn' }}
+$ yarn add @nexis-network/web3
+```
+
+```bash {{ title: 'npm' }}
+$ npm install --save @nexis-network/web3
+```
+
+```bash {{ title: 'browser bundle' }}
+<!-- Development (un-minified) -->
+<script src="https://unpkg.com/@nexis-network/web3.js@0.92.0/lib/index.iife.js"></script>
+
+<!-- Production (un-minified) -->
+<script src="https://unpkg.com/@nexis-network/web3.js@0.92.0/lib/index.iife.min.js"></script>
+```
+
+</CodeGroup>
+
+## Development Environment Setup
+
+Install the latest Nexis Network release from https://docs.nexis-network.com/cli/install-nexis-network-cli-tools
+
+### BPF program development
+
+Use `cargo build-bpf` from the latest release
+
+## Usage
+
+<CodeGroup>
+
+```bash {{ title: 'javascript' }}
+const nexis-networkWeb3 = require('@nexis-network/web3.js');
+```
+
+```bash {{ title: 'ES6' }}
+import nexis-networkWeb3 from '@nexis-network/web3.js';
+```
+
+```bash {{ title: 'browser bundle' }}
+<!-- Development (un-minified) -->
+<script src="https://unpkg.com/@nexis-network/web3.js@0.92.0/lib/index.iife.js"></script>
+
+<!-- Production (un-minified) -->
+// `nexis-networkWeb3` is provided in the global namespace by the `nexis-networkWeb3.min.js` script bundle.
+```
+
+</CodeGroup>
+
+## Examples
+
+Example scripts for the web3.js repo and native programs:
+
+- [Web3 Examples](https://nexis.github.io/web3.js/examples)
+
+Example scripts for the Solana Program Library:
+
+- [Token Program Examples](https://github.com/solana-labs/solana-program-library/tree/master/token/js/examples)
+
+## Flow
+
+A [Flow library definition](https://flow.org/en/docs/libdefs/) is provided at https://unpkg.com/@solana/web3.js@latest/module.flow.js. Download the file and add the following line under the [libs] section of your project’s `.flowconfig` to activate it: {{className: 'break-words'}}
+
+```bash {{ title: 'Example' }}
+[libs]
+
+node_modules/@solana/web3.js/module.flow.js
+```
+
+## Releases
+
+Releases are available on [Github](https://github.com/nexis/web3.js/releases) and [npmjs.com](https://www.npmjs.com/package/@nexis/web3.js)
+
+Each Github release features a tarball containing API documentation and a minified version of the module suitable for direct use in a browser environment (`<script>` tag)
+
+## Disclaimer
+
+All claims, content, designs, algorithms, estimates, roadmaps, specifications, and performance measurements described in this project are done with the Solana Foundation’s (“SF”) best efforts. It is up to the reader to check and validate their accuracy and truthfulness. Furthermore nothing in this project constitutes a solicitation for investment.
+
+Any content produced by SF or developer resources that SF provides, are for educational and inspiration purposes only. SF does not encourage, induce or sanction the deployment, integration or use of any such applications (including the code comprising the Solana blockchain protocol) in violation of applicable laws or regulations and hereby prohibits any such deployment, integration or use. This includes use of any such applications by the reader (a) in violation of export control or sanctions laws of the United States or any other applicable jurisdiction, (b) if the reader is located in or ordinarily resident in a country or territory subject to comprehensive sanctions administered by the U.S. Office of Foreign Assets Control (OFAC), or (c) if the reader is or is working on behalf of a Specially Designated National (SDN) or a person subject to similar blocking or denied party prohibitions.
+
+The reader should be aware that U.S. export control and sanctions laws prohibit U.S. persons (and other persons that are subject to such laws) from transacting with persons in certain countries and territories or that are on the SDN list. As a project based primarily on open-source software, it is possible that such sanctioned persons may nevertheless bypass prohibitions, obtain the code comprising the Solana blockchain protocol (or other project code or applications) and deploy, integrate, or otherwise use it. Accordingly, there is a risk to individuals that other persons using the Solana blockchain protocol may be sanctioned persons and that transactions with such persons would be a violation of U.S. export controls and sanctions law. This risk applies to individuals, organizations, and other ecosystem participants that deploy, integrate, or use the Solana blockchain protocol code directly (e.g., as a node operator), and individuals that transact on the Solana blockchain through light clients, third party interfaces, and/or wallet software.
+
+## Rust API
+
+See rust.nexis.network for documentation of all crates published by Nexis Network. In particular nexis-network-sdk for working with common data structures and nexis-network-client for querying the JSON RPC API.
+
+<GuidesOther
+  id="runtime_facilities"
+  title="Runtime Facilities"
+  level={2}
+  isShow={false}
+/>
+
+## Native Programs
+
+Nexis Network contains a small handful of native programs, which are required to run validator nodes. Unlike third-party programs, the native programs are part of the validator implementation and can be upgraded as part of cluster upgrades. Upgrades may occur to add features, fix bugs, or improve performance. Interface changes to individual instructions should rarely, if ever, occur. Instead, when change is needed, new instructions are added and previous ones are marked deprecated. Apps can upgrade on their own timeline without concern of breakages across upgrades.
+
+For each native program the program id and description each supported instruction is provided. A transaction can mix and match instructions from different programs, as well include instructions from on-chain programs.
+
+## System Program
+
+Create new accounts, allocate account data, assign accounts to owning programs, transfer lamports from System Program owned accounts and pay transacation fees.
+
+Program id: 11111111111111111111111111111111
+
+Instructions: SystemInstruction
+
+## Config Program
+
+Add configuration data to the chain and the list of public keys that are permitted to modify it
+
+Program id: Config1111111111111111111111111111111111111 Instructions: config_instruction Unlike the other programs, the Config program does not define any individual instructions. It has just one implicit instruction, a "store" instruction. Its instruction data is a set of keys that gate access to the account, and the data to store in it.
+
+## Stake Program
+
+Create and manage accounts representing stake and rewards for delegations to validators.
+
+Program id: Stake11111111111111111111111111111111111111
+
+Instructions: StakeInstruction
+
+## Vote Program
+
+Create and manage accounts that track validator voting state and rewards.
+
+Program id: Vote111111111111111111111111111111111111111
+
+Instructions: VoteInstruction
+
+## BPF Loader
+
+Deploys, upgrades, and executes programs on the chain.
+
+Program id: BPFLoaderUpgradeab1e11111111111111111111111
+
+Instructions: LoaderInstruction The BPF Upgradeable Loader marks itself as "owner" of the executable and program-data accounts it creates to store your program. When a user invokes an instruction via a program id, the Nexis Network runtime will load both you’re the program and its owner, the BPF Upgradeable Loader. The runtime then passes your program to the BPF Upgradeable Loader to process the instruction.
+
+More information about deployment
+
+## Secp256k1 Program
+
+Verify secp256k1 public key recovery operations (ecrecover).
+
+Program id: KeccakSecp256k11111111111111111111111111111
+
+Instructions: new_secp256k1_instruction The secp256k1 program processes an instruction which takes in as the first byte a count of the following struct serialized in the instruction data:
+
+```js {{ title: '' }}
+struct Secp256k1SignatureOffsets {
+    secp_signature_key_offset: u16,        // offset to [signature,recovery_id,etherum_address] of 64+1+20 bytes
+    secp_signature_instruction_index: u8,  // instruction index to find data
+    secp_pubkey_offset: u16,               // offset to [signature,recovery_id] of 64+1 bytes
+    secp_signature_instruction_index: u8,  // instruction index to find data
+    secp_message_data_offset: u16,         // offset to start of message data
+    secp_message_data_size: u16,           // size of message data
+    secp_message_instruction_index: u8,    // index of instruction data to get message data
+}
+```
+
+Pseudo code of the operation:
+
+```js {{ title: '' }}
+process_instruction() {
+  for i in 0..count {
+      // i'th index values referenced:
+      instructions = &transaction.message().instructions
+      signature = instructions[secp_signature_instruction_index].data[secp_signature_offset..secp_signature_offset + 64]
+      recovery_id = instructions[secp_signature_instruction_index].data[secp_signature_offset + 64]
+      ref_eth_pubkey = instructions[secp_pubkey_instruction_index].data[secp_pubkey_offset..secp_pubkey_offset + 32]
+      message_hash = keccak256(instructions[secp_message_instruction_index].data[secp_message_data_offset..secp_message_data_offset + secp_message_data_size])
+      pubkey = ecrecover(signature, recovery_id, message_hash)
+      eth_pubkey = keccak256(pubkey[1..])[12..]
+      if eth_pubkey != ref_eth_pubkey {
+          return Error
+      }
+  }
+  return Success
+}
+```
+
+This allows the user to specify any instruction data in the transaction for signature and message data. By specifying a special instructions sysvar, one can also receive data from the transaction itself.
+
+Cost of the transaction will count the number of signatures to verify multiplied by the signature cost verify multiplier.
+
+## Optimization notes
+
+The operation will have to take place after (at least partial) deserialization, but all inputs come from the transaction data itself, this allows it to be relatively easy to execute in parallel to transaction processing and PoH verification.
+
+## Sysvar Cluster Data
+
+Nexis Network exposes a variety of cluster state data to programs via sysvar accounts. These accounts are populated at known addresses published along with the account layouts in the `solana-program` crate, and outlined below.
+
+To include sysvar data in program operations, pass the sysvar account address in the list of accounts in a transaction. The account can be read in your instruction processor like any other account. Access to sysvars accounts is always readonly.
+
+## Clock
+
+The Clock sysvar contains data on cluster time, including the current slot, epoch, and estimated wall-clock Unix timestamp. It is updated every slot.
+
+- Address: SysvarC1ock11111111111111111111111111111111
+- Layout: Clock
+
+Fields:
+
+- `slot`: the current slot
+- `epoch_start_timestamp`: the Unix timestamp of the first slot in this epoch. In the first slot of an epoch, this timestamp is identical to the unix_timestamp (below).
+- `epoch`: the current epoch
+- `leader_schedule_epoch`: the most recent epoch for which the leader schedule has already been generated
+- `unix_timestamp`: the Unix timestamp of this slot. Each slot has an estimated duration based on Proof of History. But in reality, slots may elapse faster and slower than this estimate. As a result, the Unix timestamp of a slot is generated based on oracle input from voting validators. This timestamp is calculated as the stake-weighted median of timestamp estimates provided by votes, bounded by the expected time elapsed since the start of the epoch.
+
+More explicitly: for each slot, the most recent vote timestamp provided by each validator is used to generate a timestamp estimate for the current slot (the elapsed slots since the vote timestamp are assumed to be Bank::ns_per_slot). Each timestamp estimate is associated with the stake delegated to that vote account to create a distribution of timestamps by stake. The median timestamp is used as the `unix_timestamp`, unless the elapsed time since the `epoch_start_timestamp` has deviated from the expected elapsed time by more than 25%.
+
+## EpochSchedule
+
+The EpochSchedule sysvar contains epoch scheduling constants that are set in genesis, and enables calculating the number of slots in a given epoch, the epoch for a given slot, etc. (Note: the epoch schedule is distinct from the `leader schedule`)
+
+- Address: SysvarEpochSchedu1e111111111111111111111111
+- Layout: EpochSchedule
+
+## Fees
+
+The Fees sysvar contains the fee calculator for the current slot. It is updated every slot, based on the fee-rate governor.
+
+- Address: SysvarFees111111111111111111111111111111111
+- Layout: Fees
+
+## Instructions
+
+The Instructions sysvar contains the serialized instructions in a Message while that Message is being processed. This allows program instructions to reference other instructions in the same transaction.
+
+- Address: Sysvar1nstructions1111111111111111111111111
+- Layout: Instructions
+
+## RecentBlockhashes
+
+The RecentBlockhashes sysvar contains the active recent blockhashes as well as their associated fee calculators. It is updated every slot.
+
+- Address: SysvarRecentB1ockHashes11111111111111111111
+- Layout: RecentBlockhashes
+
+## Rent
+
+The Rent sysvar contains the rental rate. Currently, the rate is static and set in genesis. The Rent burn percentage is modified by manual feature activation.
+
+- Address: SysvarRent111111111111111111111111111111111
+- Layout: Rent
+
+## SlotHashes
+
+The SlotHashes sysvar contains the most recent hashes of the slot's parent banks. It is updated every slot.
+
+- Address: SysvarS1otHashes111111111111111111111111111
+- Layout: SlotHashes
+
+## SlotHistory
+
+The SlotHistory sysvar contains a bitvector of slots present over the last epoch. It is updated every slot.
+
+- Address: SysvarS1otHistory11111111111111111111111111
+- Layout: SlotHistory
+
+## StakeHistory
+
+The StakeHistory sysvar contains the history of cluster-wide stake activations and de-activations per epoch. It is updated at the start of every epoch.
+
+- Address: SysvarStakeHistory1111111111111111111111111
+- Layout: StakeHistory
+
+<GuidesOther
+  id="onchain_programs"
+  title="On-chain Programs"
+  level={2}
+  isShow={false}
+/>
+
+## Overview
+
+Developers can write and deploy their own programs to the Nexis Network blockchain.
+
+The Helloworld example is a good starting place to see how a program is written, built, deployed, and interacted with on-chain.
+
+## Berkley Packet Filter (BPF)
+
+Nexis Network on-chain programs are compiled via the LLVM compiler infrastructure to an Executable and Linkable Format (ELF) containing a variation of the Berkley Packet Filter (BPF) bytecode.
+
+Because Nexis Network uses the LLVM compiler infrastructure, a program may be written in any programming language that can target the LLVM's BPF backend. Nexis Network currently supports writing programs in Rust and C/C++.
+
+BPF provides an efficient instruction set that can be executed in a interpreted virtual machine or as efficient just-in-time compiled native instructions.
+
+## Memory map
+
+The virtual address memory map used by Nexis Network BPF programs is fixed and laid out as follows
+
+- Program code starts at 0x100000000
+- Stack data starts at 0x200000000
+- Heap data starts at 0x300000000
+- Program input parameters start at 0x400000000 The above virtual addresses are start addresses but programs are given access to a subset of the memory map. The program will panic if it attempts to read or write to a virtual address that it was not granted access to, and an `AccessViolation` error will be returned that contains the address and size of the attempted violation.
+
+## Stack
+
+BPF uses stack frames instead of a variable stack pointer. Each stack frame is 4KB in size.
+
+If a program violates that stack frame size, the compiler will report the overrun as a warning.
+
+For example: `Error: Function _ZN16curve25519_dalek7edwards21EdwardsBasepointTable6create17h178b3d2411f7f082E Stack offset of -30728 exceeded max offset of -4096 by 26632 bytes, please minimize large stack variables` {{className: 'break-words'}}
+
+The message identifies which symbol is exceeding its stack frame but the name might be mangled if it is a Rust or C++ symbol. To demangle a Rust symbol use rustfilt. The above warning came from a Rust program, so the demangled symbol name is:
+
+$ rustfilt \_ZN16curve25519_dalek7edwards21EdwardsBasepointTable6create17h178b3d2411f7f082E
+curve25519_dalek::edwards::EdwardsBasepointTable::create {{className: 'break-words'}}
+
+To demangle a C++ symbol use `c++filt` from binutils.
+
+The reason a warning is reported rather than an error is because some dependent crates may include functionality that violates the stack frame restrictions even if the program doesn't use that functionality. If the program violates the stack size at runtime, an `AccessViolation` error will be reported.
+
+BPF stack frames occupy a virtual address range starting at 0x200000000.
+
+## Call Depth
+
+Programs are constrained to run quickly, and to facilitate this, the program's call stack is limited to a max depth of 64 frames.
+
+## Heap
+
+Programs have access to a runtime heap either directly in C or via the Rust `alloc` APIs. To facilitate fast allocations, a simple 32KB bump heap is utilized. The heap does not support `free` or `realloc` so use it wisely.
+
+Internally, programs have access to the 32KB memory region starting at virtual address 0x300000000 and may implement a custom heap based on the program's specific needs.
+
+- Rust program heap usage
+- C program heap usage
+
+## Float Support
+
+Programs support a limited subset of Rust's float operations, if a program attempts to use a float operation that is not supported, the runtime will report an unresolved symbol error.
+
+Float operations are performed via software libraries, specifically LLVM's float builtins. Due to the software emulated they consume more compute units than integer operations. In general, fixed point operations are recommended where possible.
+
+The Nexis Network Program Library math tests will report the performance of some math operations: https://github.com/nexis-network/nexis-network-program-library/tree/master/libraries/math {{className: 'break-words'}}
+
+To run the test, sync the repo, and run:
+
+`$ cargo test-bpf -- --nocapture --test-threads=1`
+
+Recent results show the float operations take more instructions compared to integers equivalents. Fixed point implementations may vary but will also be less then the float equivalents:
+
+u64 f32
+
+Multipy 8 176
+
+Divide 9 219
+
+## Static Writable Data
+
+Program shared objects do not support writable shared data. Programs are shared between multiple parallel executions using the same shared read-only code and data. This means that developers should not include any static writable or global variables in programs. In the future a copy-on-write mechanism could be added to support writable data.
+
+## Signed division
+
+The BPF instruction set does not support signed division. Adding a signed division instruction is a consideration.
+
+## Loaders
+
+Programs are deployed with and executed by runtime loaders, currently there are two supported loaders BPF Loader and BPF loader deprecated
+
+Loaders may support different application binary interfaces so developers must write their programs for and deploy them to the same loader. If a program written for one loader is deployed to a different one the result is usually a `AccessViolation` error due to mismatched deserialization of the program's input parameters.
+
+For all practical purposes program should always be written to target the latest BPF loader and the latest loader is the default for the command-line interface and the javascript APIs.
+
+For language specific information about implementing a program for a particular loader see:
+
+- Rust program entrypoints
+- C program entrypoints
+
+### Deployment
+
+BPF program deployment is the process of uploading a BPF shared object into a program account's data and marking the account executable. A client breaks the BPF shared object into smaller pieces and sends them as the instruction data of `Write` instructions to the loader where loader writes that data into the program's account data. Once all the pieces are received the client sends a `Finalize` instruction to the loader, the loader then validates that the BPF data is valid and marks the program account as `executable`. Once the program account is marked executable, subsequent transactions may issue instructions for that program to process.
+
+When an instruction is directed at an executable BPF program the loader configures the program's execution environment, serializes the program's input parameters, calls the program's entrypoint, and reports any errors encountered.
+
+For further information see deploying
+
+### Input Parameter Serialization
+
+BPF loaders serialize the program input parameters into a byte array that is then passed to the program's entrypoint, where the program is responsible for deserializing it on-chain. One of the changes between the deprecated loader and the current loader is that the input parameters are serialized in a way that results in various parameters falling on aligned offsets within the aligned byte array. This allows deserialization implementations to directly reference the byte array and provide aligned pointers to the program.
+
+For language specific information about serialization see:
+
+- Rust program parameter deserialization
+- C program parameter deserialization
+
+The latest loader serializes the program input parameters as follows (all encoding is little endian):
+
+- 8 byte unsigned number of accounts
+- For each account
+  - 1 byte indicating if this is a duplicate account, if not a duplicate then the value is 0xff, otherwise the value is the index of the account it is a duplicate of.
+  - If duplicate: 7 bytes of padding
+  - If not duplicate:
+    - 1 byte boolean, true if account is a signer
+    - 1 byte boolean, true if account is writable
+    - 1 byte boolean, true if account is executable
+    - 4 bytes of padding
+    - 32 bytes of the account public key
+    - 32 bytes of the account's owner public key
+    - 8 bytes unsigned number of lamports owned by the account
+    - 8 bytes unsigned number of bytes of account data
+    - x bytes of account data
+    - 10k bytes of padding, used for realloc
+    - enough padding to align the offset to 8 bytes.
+    - 8 bytes rent epoch
+- 8 bytes of unsigned number of instruction data
+- x bytes of instruction data
+- 32 bytes of the program id
+
+## Developing with Rust
+
+Nexis Network supports writing on-chain programs using the Rust programming language.
+
+## Project Layout
+
+Nexis Network Rust programs follow the typical Rust project layout:
+
+```bash {{ title: '' }}
+/inc/
+/src/
+/Cargo.toml
+But must also include:
+/Xargo.toml
+Which must contain:
+[target.bpfel-unknown-unknown.dependencies.std]
+features = []
+```
+
+Nexis Network Rust programs may depend directly on each other in order to gain access to instruction helpers when making cross-program invocations. When doing so it's important to not pull in the dependent program's entrypoint symbols because they may conflict with the program's own. To avoid this, programs should define an `exclude_entrypoint` feature in `Cargo.toml` and use to exclude the entrypoint.
+
+- Define the feature
+- Exclude the entrypoint
+
+Then when other programs include this program as a dependency, they should do so using the `exclude_entrypoint` feature.
+
+- Include without entrypoint
+
+## Project Dependencies
+
+At a minimum, Nexis Network Rust programs must pull in the solana-program crate.
+
+Nexis Network BPF programs have some restrictions that may prevent the inclusion of some crates as dependencies or require special handling.
+
+For example:
+
+- Crates that require the architecture be a subset of the ones supported by the official toolchain. There is no workaround for this unless that crate is forked and BPF added to that those architecture checks.
+- Crates may depend on `rand` which is not supported in Nexis Network’s deterministic program environment. To include a `rand` dependent crate refer to Depending on Rand.
+- Crates may overflow the stack even if the stack overflowing code isn't included in the program itself. For more information refer to Stack.
+
+## How to Build
+
+First setup the environment:
+
+- Install the latest Rust stable from https://rustup.rs/ {{className: 'break-words'}}
+- Install the latest Nexis Network command-line tools from https://docs.nexis-network.com/cli/install-nexisn-etwork-cli-tools {{className: 'break-words'}}
+
+The normal cargo build is available for building programs against your host machine which can be used for unit testing:
+
+```bash {{ title: '' }}
+$ cargo build
+```
+
+To build a specific program, such as SPL Token, for the Nexis Network BPF target which can be deployed to the cluster:
+
+```bash {{ title: '' }}
+$ cd <the program directory>
+$ cargo build-bpf
+```
+
+## How to Test
+
+Nexis Network programs can be unit tested via the traditional `cargo test` mechanism by exercising program functions directly.
+
+To help facilitate testing in an environment that more closely matches a live cluster, developers can use the `program-test` crate. The `program-test` crate starts up a local instance of the runtime and allows tests to send multiple transactions while keeping state for the duration of the test.
+
+For more information the test in sysvar example shows how an instruction containing syavar account is sent and processed by the program.
+
+## Program Entrypoint
+
+Programs export a known entrypoint symbol which the Nexis Network runtime looks up and calls when invoking a program. Nexis Network supports multiple versions of the BPF loader and the entry points may vary between them. Programs must be written for and deployed to the same loader. For more details see the [overview].
+
+Currently there are two supported loaders BPF Loader and BPF loader deprecated.
+
+They both have the same raw entrypoint definition, the following is the raw symbol that the runtime looks up and calls:
+
+```bash {{ title: '' }}
+#[no_mangle]
+pub unsafe extern "C" fn entrypoint(input: *mut u8) -> u64;
+```
+
+This entrypoint takes a generic byte array which contains the serialized program parameters (program id, accounts, instruction data, etc...). To deserialize the parameters each loader contains its own wrapper macro that exports the raw entrypoint, deserializes the parameters, calls a user defined instruction processing function, and returns the results.
+
+You can find the entrypoint macros here:
+
+- BPF Loader's entrypoint macro
+- BPF Loader deprecated's entrypoint macro
+
+The program defined instruction processing function that the entrypoint macros call must be of this form:
+
+pub type ProcessInstruction = fn(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult; {{className: 'break-words'}}
+
+Refer to helloworld's use of the entrypoint as an example of how things fit together.
+
+### Parameter Deserialization
+
+Each loader provides a helper function that deserializes the program's input parameters into Rust types. The entrypoint macros automatically calls the deserialization helper:
+
+- BPF Loader deserialization
+- BPF Loader deprecated deserialization Some programs may want to perform deserialization themselves and they can by providing their own implementation of the raw entrypoint. Take note that the provided deserialization functions retain references back to the serialized byte array for variables that the program is allowed to modify (lamports, account data). The reason for this is that upon return the loader will read those modifications so they may be committed. If a program implements their own deserialization function they need to ensure that any modifications the program wishes to commit be written back into the input byte array.
+
+Details on how the loader serializes the program inputs can be found in the Input Parameter Serialization docs.
+
+### Data Types
+
+The loader's entrypoint macros call the program defined instruction processor function with the following parameters:
+
+```bash {{ title: '' }}
+program_id: &Pubkey,
+accounts: &[AccountInfo],
+instruction_data: &[u8]
+```
+
+The program id is the public key of the currently executing program.
+
+The accounts is an ordered slice of the accounts referenced by the instruction and represented as an AccountInfo structures. An account's place in the array signifies its meaning, for example, when transferring lamports an instruction may define the first account as the source and the second as the destination.
+
+The members of the `AccountInfo` structure are read-only except for `lamports` and `data`. Both may be modified by the program in accordance with the runtime enforcement policy. Both of these members are protected by the Rust `RefCell` construct, so they must be borrowed to read or write to them. The reason for this is they both point back to the original input byte array, but there may be multiple entries in the accounts slice that point to the same account. Using RefCell ensures that the program does not accidentally perform overlapping read/writes to the same underlying data via multiple AccountInfo structures. If a program implements their own deserialization function care should be taken to handle duplicate accounts appropriately.
+
+The instruction data is the general purpose byte array from the instruction's instruction data being processed.
+
+### Heap
+
+Rust programs implement the heap directly by defining a custom `global_allocator`
+
+Programs may implement their own `global_allocator` based on its specific needs. Refer to the custom heap example for more information.
+
+### Restrictions
+
+On-chain Rust programs support most of Rust's libstd, libcore, and liballoc, as well as many 3rd party crates.
+
+There are some limitations since these programs run in a resource-constrained, single-threaded environment, and must be deterministic:
+
+- No access to
+  - `rand`
+  - `std::fs`
+  - `std::net`
+  - `std::os`
+  - `std::future`
+  - `std::net`
+  - `std::process`
+  - `std::sync`
+  - `std::task`
+  - `std::thread`
+  - `std::time`
+- Limited access to:
+  - `std::hash`
+  - `std::os`
+- Bincode is extremely computationally expensive in both cycles and call depth and should be avoided
+- String formatting should be avoided since it is also computationally expensive.
+- No support for `println!`, `print!`, the Nexis Network logging helpers should be used instead.
+- The runtime enforces a limit on the number of instructions a program can execute during the processing of one instruction. See computation budget for more information.
+
+### Depending on Rand
+
+Programs are constrained to run deterministically, so random numbers are not available. Sometimes a program may depend on a crate that depends itself on `rand` even if the program does not use any of the random number functionality. If a program depends on `rand`, the compilation will fail because there is no `get-random` support for Nexis Network. The error will typically look like this:
+
+```bash {{ title: '' }}
+error: target is not supported, for more information see: https://docs.rs/getrandom/#unsupported-targets
+   --> /Users/jack/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.1.14/src/lib.rs:257:9
+    |
+257 | /         compile_error!("\
+258 | |             target is not supported, for more information see: \
+259 | |             https://docs.rs/getrandom/#unsupported-targets\
+260 | |         ");
+    | |___________^
+pub unsafe extern "C" fn entrypoint(input: *mut u8) -> u64;
+```
+
+To work around this dependency issue, add the following dependency to the program's `Cargo.toml`:
+
+```js {{ title: '' }}
+getrandom = { version = "0.1.14", features = ["dummy"] }
+```
+
+### Logging
+
+Rust's `println!` macro is computationally expensive and not supported. Instead the helper macro [msg!](https://github.com/nexis/nexis-chain/blob/v0.3.6/sdk/program/src/log.rs#L33) is provided.
+
+msg! has two forms:
+
+```bash {{ title: '' }}
+msg!("A string");
+or
+msg!(0_64, 1_64, 2_64, 3_64, 4_64);
+Both forms output the results to the program logs. If a program so wishes they can emulate println! by using format!:
+msg!("Some variable: {:?}", variable);
+```
+
+The debugging section has more information about working with program logs the [Rust examples]developing-rust.md#examples) contains a logging example.
+
+### Panicking
+
+Rust's `panic!`, `assert!`, and internal panic results are printed to the program logs by default.
+
+```bash {{ title: '' }}
+INFO  nexis_runtime::message_processor] Finalized account CGLhHSuWsp1gT4B7MY2KACqp9RUwQRhcUFfVSuxpSajZ
+INFO  nexis_runtime::message_processor] Call BPF program CGLhHSuWsp1gT4B7MY2KACqp9RUwQRhcUFfVSuxpSajZ
+INFO  nexis_runtime::message_processor] Program log: Panicked at: 'assertion failed: `(left == right)`
+      left: `1`,
+     right: `2`', rust/panic/src/lib.rs:22:5
+INFO  nexis _runtime::message_processor] BPF program consumed 5453 of 200000 units
+INFO  nexis _runtime::message_processor] BPF program CGLhHSuWsp1gT4B7MY2KACqp9RUwQRhcUFfVSuxpSajZ failed: BPF program panicked
+```
+
+### Custom Panic Handler
+
+Programs can override the default panic handler by providing their own implementation.
+
+First define the `custom-panic` feature in the program's `Cargo.toml`
+
+```json {{ title: '' }}
+[features]
+default = ["custom-panic"]
+custom-panic = []
+Then provide a custom implementation of the panic handler:
+#[cfg(all(feature = "custom-panic", target_arch = "bpf"))]
+#[no_mangle]
+fn custom_panic(info: &core::panic::PanicInfo<'_>) {
+    nexis-network_program::msg!("program custom panic enabled");
+     nexis-network_program::msg!("{}", info);
+}
+```
+
+In the above snippit, the default implementation is shown, but developers may replace that with something that better suits their needs.
+
+One of the side effects of supporting full panic messages by default is that programs incur the cost of pulling in more of Rust's `libstd` implementation into program's shared object. Typical programs will already be pulling in a fair amount of `libstd` and may not notice much of an increase in the shared object size. But programs that explicitly attempt to be very small by avoiding `libstd` may take a significant impact (~25kb). To eliminate that impact, programs can provide their own custom panic handler with an empty implementation.
+
+```json {{ title: '' }}
+#[cfg(all(feature = "custom-panic", target_arch = "bpf"))]
+#[no_mangle]
+fn custom_panic(info: &core::panic::PanicInfo<'_>) {
+    // Do nothing to save space
+}
+```
+
+### Compute Budget
+
+Use the system call `sol_log_compute_units()` to log a message containing the remaining number of compute units the program may consume before execution is halted
+
+See compute budget for more information.
+
+### ELF Dump
+
+The BPF shared object internals can be dumped to a text file to gain more insight into a program's composition and what it may be doing at runtime. The dump will contain both the ELF information as well as a list of all the symbols and the instructions that implement them. Some of the BPF loader's error log messages will reference specific instruction numbers where the error occurred. These references can be looked up in the ELF dump to identify the offending instruction and its context.
+
+To create a dump file:
+
+```bash {{ title: '' }}
+$ cd <program directory>
+$ cargo build-bpf --dump
+```
+
+Examples# The Nexis Network Program Library github repo contains a collection of Rust examples.
+
+## Developing with C
+
+This page describes developing on the Nexis Network utilizing the C programming language.
+
+Nexis Network supports writing on-chain programs using the C and C++ programming languages.
+
+## Project Layout
+
+C projects are laid out as follows:
+
+```bash {{ title: '' }}
+/src/<program name>
+/makefile
+```
+
+The `makefile` should contain the following:
+
+```bash {{ title: '' }}
+OUT_DIR := <path to place to resulting shared object>
+include ~/.local/share/solana/install/active_release/bin/sdk/bpf/c/bpf.mk
+```
+
+The bpf-sdk may not be in the exact place specified above but if you setup your environment per How to Build then it should be.
+
+Take a look at helloworld for an example of a C program.
+
+## How to Build
+
+First setup the environment:
+
+Install the latest Rust stable from https://rustup.rs Install the latest Nexis Network command-line tools from https://docs.nexis-network.com/cli/install-nexis-network-cli-tools Then build using make:
+
+```bash {{ title: '' }}
+make -C <program directory>
+```
+
+## How to Test
+
+Nexis Network uses the Criterion test framework and tests are executed each time the program is built How to Build.
+
+To add tests, create a new file next to your source file named `test_<program name>.c` and populate it with criterion test cases. For an example see the Criterion docs for information on how to write a test case.
+
+## Program Entrypoint
+
+Programs export a known entrypoint symbol which the Nexis Network runtime looks up and calls when invoking a program. Nexis Network supports multiple versions of the BPF loader and the entrypoints may vary between them. Programs must be written for and deployed to the same loader. For more details see the overview.
+
+Currently there are two supported loaders BPF Loader and BPF loader deprecated
+
+They both have the same raw entrypoint definition, the following is the raw symbol that the runtime looks up and calls:
+
+```bash {{ title: '' }}
+extern uint64_t entrypoint(const uint8_t *input)
+```
+
+This entrypoint takes a generic byte array which contains the serialized program parameters (program id, accounts, instruction data, etc...). To deserialize the parameters each loader contains its own helper function.
+
+### Serialization
+
+Refer to tuner's use of the deserialization function.
+
+Each loader provides a helper function that deserializes the program's input parameters into C types:
+
+- BPF Loader deserialization
+- BPF Loader deprecated deserialization
+
+Some programs may want to perform deserialzaiton themselves and they can by providing their own implementation of the raw entrypoint. Take note that the provided deserialization functions retain references back to the serialized byte array for variables that the program is allowed to modify (lamports, account data). The reason for this is that upon return the loader will read those modifications so they may be committed. If a program implements their own deserialization function they need to ensure that any modifications the program wishes to commit must be written back into the input byte array.
+
+Details on how the loader serializes the program inputs can be found in the Input Parameter Serialization docs.
+
+## Data Types
+
+The loader's deserialization helper function populates the SolParameters structure:
+
+```js {{ title: '' }}
+/**
+ * Structure that the program's entrypoint input data is deserialized into.
+ */
+typedef struct {
+  SolAccountInfo* ka; /** Pointer to an array of SolAccountInfo, must already
+                          point to an array of SolAccountInfos */
+  uint64_t ka_num; /** Number of SolAccountInfo entries in `ka` */
+  const uint8_t *data; /** pointer to the instruction data */
+  uint64_t data_len; /** Length in bytes of the instruction data */
+  const SolPubkey *program_id; /** program_id of the currently executing program */
+} SolParameters;
+```
+
+'ka' is an ordered array of the accounts referenced by the instruction and represented as a SolAccountInfo structures. An account's place in the array signifies its meaning, for example, when transferring lamports an instruction may define the first account as the source and the second as the destination.
+
+The members of the `SolAccountInfo` structure are read-only except for `lamports` and `data`. Both may be modified by the program in accordance with the runtime enforcement policy. When an instruction reference the same account multiple times there may be duplicate `SolAccountInfo` entries in the array but they both point back to the original input byte array. A program should handle these case delicately to avoid overlapping read/writes to the same buffer. If a program implements their own deserialization function care should be taken to handle duplicate accounts appropriately.
+
+`data` is the general purpose byte array from the instruction's instruction data being processed.
+
+`program_id` is the public key of the currently executing program.
+
+## Heap
+
+C programs can allocate memory via the system call `calloc` or implement their own heap on top of the 32KB heap region starting at virtual address x300000000. The heap region is also used by `calloc` so if a program implements their own heap it should not also call `calloc`.
+
+## Logging
+
+The runtime provides two system calls that take data and log it to the program logs.
+
+- `sol_log(const char*)`
+- `sol_log_64(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t)` The debugging section has more information about working with program logs.
+
+## Compute Budget
+
+Use the system `call sol_log_compute_units()` to log a message containing the remaining number of compute units the program may consume before execution is halted
+
+See compute budget for more information.
+
+## ELF Dump
+
+The BPF shared object internals can be dumped to a text file to gain more insight into a program's composition and what it may be doing at runtime. The dump will contain both the ELF information as well as a list of all the symbols and the instructions that implement them. Some of the BPF loader's error log messages will reference specific instruction numbers where the error occurred. These references can be looked up in the ELF dump to identify the offending instruction and its context.
+
+To create a dump file:
+
+```bash {{ title: '' }}
+$ cd <program directory>
+$ make dump_<program name>
+```
+
+## Examples
+
+The Nexis Network Program Library github repo contains a collection of C examples
+
+## Deploying
+
+
+
+As shown in the diagram above, a program author creates a program, compiles it to an ELF shared object containing BPF bytecode, and uploads it to the Nexis Network cluster with a special deploy transaction. The cluster makes it available to clients via a program ID. The program ID is an address specified when deploying and is used to reference the program in subsequent transactions.
+
+Upon a successful deployment the account that holds the program is marked executable and its account data become permanently immutable. If any changes are required to the program (features, patches, etc...) the new program must be deployed to a new program ID.
+
+The Nexis Network command line interface supports deploying programs, for more information see the deploy command line usage documentation.
+
+## Debugging
+
+Nexis Network programs run on-chain, so debugging them in the wild can be challenging. To make debugging programs easier, developers can write unit tests that directly test their program's execution via the Nexis Network runtime, or run a local cluster that will allow RPC clients to interact with their program.
+
+## Running unit tests
+
+- Testing with Rust
+- Testing with C
+
+## Logging
+
+During program execution both the runtime and the program log status and error messages.
+
+For information about how to log from a program see the language specific documentation:
+
+- Logging from a Rust program
+- Logging from a C program
+
+When running a local cluster the logs are written to stdout as long as they are enabled via the `RUST_LOG` log mask. From the perspective of program development it is helpful to focus on just the runtime and program logs and not the rest of the cluster logs. To focus in on program specific information the following log mask is recommended:
+
+`export RUST_LOG=solana_runtime::system_instruction_processor=trace,solana_runtime::message_processor=info,solana_bpf_loader=debug,solana_rbpf=debug` {{className: 'break-words'}}
+
+Log messages coming directly from the program (not the runtime) will be displayed in the form: 
+
+`Program log: <user defined message>`
+
+## Error Handling
+
+The amount of information that can be communicated via a transaction error is limited but there are many points of possible failures. The following are possible failure points and information about what errors to expect and where to get more information:
+
+- The BPF loader may fail to parse the program, this should not happen since the loader has already finalized the program's account data.
+- `InstructionError::InvalidAccountData` will be returned as part of the transaction error.
+- The BPF loader may fail to setup the program's execution environment
+- `InstructionError::Custom(0x0b9f_0001)` will be returned as part of the transaction error. "0x0b9f_0001" is the hexadecimal representation of `VirtualMachineCreationFailed`.
+- The BPF loader may have detected a fatal error during program executions (things like panics, memory violations, system call errors, etc...)
+- `InstructionError::Custom(0x0b9f_0002)` will be returned as part of the transaction error. "0x0b9f_0002" is the hexadecimal representation of `VirtualMachineFailedToRunProgram`.
+- The program itself may return an error
+- `InstructionError::Custom(<user defined value>)` will be returned. The "user defined value" must not conflict with any of the builtin runtime program errors. Programs typically use enumeration types to define error codes starting at zero so they won't conflict.
+
+In the case of `VirtualMachineFailedToRunProgram` errors, more information about the specifics of what failed are written to the program's execution logs.
+
+For example, an access violation involving the stack will look something like this:
+
+`BPF program 4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM failed: out of bounds memory store (insn #615), addr 0x200001e38/8` {{className: 'break-words'}}
+
+## Monitoring Compute Budget Consumption
+
+The program can log the remaining number of compute units it will be allowed before program execution is halted. Programs can use these logs to wrap operations they wish to profile.
+
+- Log the remaining compute units from a Rust program
+- Log the remaining compute units from a C program
+
+See compute budget for more information.
+
+## ELF Dump
+
+The BPF shared object internals can be dumped to a text file to gain more insight into a program's composition and what it may be doing at runtime.
+
+- Create a dump file of a Rust program
+- Create a dump file of a C program
+
+## Instruction Tracing
+
+During execution the runtime BPF interpreter can be configured to log a trace message for each BPF instruction executed. This can be very helpful for things like pin-pointing the runtime context leading up to a memory access violation.
+
+The trace logs together with the ELF dump can provide a lot of insight (though the traces produce a lot of information).
+
+To turn on BPF interpreter trace messages in a local cluster configure the `nexis-network_rbpf` level in `RUST_LOG` to `trace`. For example:
+
+`export RUST_LOG=nexis-network_rbpf=trace`
+
+## Examples
+
+### Example: Hello World
+
+Hello World is a project that demonstrates how to use the Nexis Network Javascript API to build, deploy, and interact with programs on the Nexis Network blockchain.
+
+The project comprises of:
+
+- An on-chain hello world program
+- A client that can send a "hello" to an account and get back the number of times "hello" has been sent
+
+### Build and run Hello World program
+
+First fetch the latest version of the example code:
+
+```bash {{ title: '' }}
+$ git clone https://github.com/solana-labs/example-helloworld.git
+$ cd example-helloworld
+```
+
+Next, follow the steps in the git repository's README.
+
+## Example: Build a game (Break)
+
+### Example: Break
+
+Break is a React app that gives users a visceral feeling for just how fast and high-performance the Nexis Network really is. Can you break the Nexis Network blockchain? During a 15 second playthough, each click of a button or keystroke sends a new transaction to the cluster. Smash the keyboard as fast as you can and watch your transactions get finalized in real time while the network takes it all in stride!
+
+Break can be played on our Devnet, Testnet and Mainnet Beta networks. Plays are free on Devnet and Testnet, where the session is funded by a network faucet. On Mainnet Beta, users pay to play 0.08 NZT per game. The session account can be funded by a local keystore wallet.
+
+### Build and run Break locally
+
+First fetch the latest version of the example code:
+
+```bash {{ title: '' }}
+$ git clone https://github.com/solana-labs/break.git
+$ cd break
+```
+
+Next, follow the steps in the git repository's README.
+
+## Example Client: Web Wallet
+
+### Build and run a web wallet locally
+
+First fetch the example code:
+
+```text {{ title: '' }}
+$ git clone https://github.com/solana-labs/example-webwallet.git
+$ cd example-webwallet
+$ TAG=$(git describe --tags $(git rev-list --tags
+--max-count=1))
+$ git checkout $TAG
+```
+
+Next, follow the steps in the git repository's README.
+
+## FAQ
+
+When writing or interacting with Nexis Network programs, there are common questions or challenges that often come up. Below are resources to help answer these questions.
+
+### `CallDepth` error
+
+This error means that that cross-program invocation exceeded the allowed invocation call depth.
+
+See cross-program invocation Call Depth
+
+### `CallDepthExceeded` error
+
+This error means the BPF stack depth was exceeded.
+
+See call depth
+
+### Computational constraints
+
+See computational constraints
+
+### Float Rust types
+
+See float support
+
+### Heap size
+
+See heap
+
+### InvalidAccountData
+
+This program error can happen for a lot of reasons. Usually, it's caused by passing an account to the program that the program is not expecting, either in the wrong position in the instruction or an account not compatible with the instruction being executed.
+
+An implementation of a program might also cause this error when performing a cross-program instruction and forgetting to provide the account for the program that you are calling.
+
+### InvalidInstructionData
+
+This program error can occur while trying to deserialize the instruction, check that the structure passed in matches exactly the instruction. There may be some padding between fields. If the program implements the Rust `Pack` trait then try packing and unpacking the instruction type `T` to determine the exact encoding the program expects:
+
+https://github.com/nexis-network/nexis/blob/v0.3.6/sdk/program/src/program_pack.rs {{className: 'break-words'}}
+
+### MissingRequiredSignature
+
+Some instructions require the account to be a signer; this error is returned if an account is expected to be signed but is not.
+
+An implementation of a program might also cause this error when performing a cross-program invocation that requires a signed program address, but the passed signer seeds passed to `invoke_signed` don't match the signer seeds used to create the program address `create_program_address`.
+
+### `rand` Rust dependency causes compilation failure
+
+See Rust Project Dependencies
+
+### Rust restrictions
+
+See Rust restrictions
+
+### Stack size
+
+See stack
+
+<GuidesOther
+  id="nexis_network_test"
+  title="Nexis Network Test Validator"
+  level={2}
+  isShow={false}
+/>
+
+During early stage development, it is often convenient to target a cluster with fewer restrictions and more configuration options than the public offerings provide. This is easily achieved with the `nexis-network-test-validator` binary, which starts a full-featured, single-node cluster on the developer's workstation.
+
+## Advantages
+
+- No RPC rate-limits
+- No airdrop limits
+- Direct on-chain program deployment (`--bpf-program ...`)
+- Clone accounts from a public cluster, including programs (`--clone ...`)
+- Configurable transaction history retention (`--limit-ledger-size ...`)
+- Configurable epoch length (`--slots-per-epoch ...`)
+- Jump to an arbitrary slot (`--warp-slot ...`)
+
+## Installation
+
+The `nexis-network-test-validator` binary ships with the Nexis Network CLI Tool Suite. Install before continuing.
+
+## Running
+
+First take a look at the configuration options
+
+```bash {{ title: '' }}
+Nexis-network-test-validator --help
+```
+
+Next start the test validator
+
+Nexis-network-test-validator
+
+By default, basic status information is printed while the process is running. See Appendix I for details
+
+Ledger location: test-ledger
+
+Log: test-ledger/validator.log
+
+Identity: EPhgPANa5Rh2wa4V2jxt7YbtWa3Uyw4sTeZ13cQjDDB8
+
+Genesis Hash: 4754oPEMhAKy14CZc8GzQUP93CB4ouELyaTs4P8ittYn
+
+Version: 1.6.7
+
+Shred Version: 13286
+
+Gossip Address: 127.0.0.1:1024
+
+TPU Address: 127.0.0.1:1027
+
+JSON RPC URL: http://127.0.0.1:8899
+
+⠈ 00:36:02 | Processed Slot: 5142 | Confirmed Slot: 5142 | Finalized Slot: 5110 | Snapshot Slot: 5100 | Transactions: 5142 | ◎499.974295000
+
+Leave nexis-network-test-validator running in its own terminal. When it is no longer needed, it can be stopped with ctrl-c.
+
+## Interacting
+
+Open a new terminal to interact with a running `nexis-network-test-validator` instance using other binaries from the Nexis Network CLI Tool Suite or your own client software.
+
+Configure the CLI Tool Suite to target a local cluster by default#
+
+Nexisnetwork config set --url http://127.0.0.1:8899
+
+Verify the CLI Tool Suite configuration
+
+Nexisnetwork genesis-hash
+
+- NOTE: The result should match the `Genesis Hash:` field in the `nexis-network-test-validator` status output
+
+Check the wallet balance
+
+Nexisnetwork balance
+
+- NOTE: `Error: No such file or directory (os error 2)` means that the default wallet does not yet exist. Create it with `nexis-network-keygen new`.
+- NOTE: If the wallet has a zero NZT balance, airdrop some localnet NZT with `nexis airdrop 10`
+
+Perform a basic transfer transaction
+
+Nexisnetwork transfer EPhgPANa5Rh2wa4V2jxt7YbtWa3Uyw4sTeZ13cQjDDB8 1
+
+Monitor `msg!()` output from on-chain programs
+
+Nexisnetwork logs
+
+- NOTE: This command needs to be running when the target transaction is executed. Run it in its own terminal
+
+## Appendix I: Status Output
+
+Ledger location: test-ledger
+
+- File path of the ledger storage directory. This directory can get large. Store less transaction history with `--limit-ledger-size ...` or relocate it with `--ledger ...`
+
+Log: test-ledger/validator.log
+
+- File path of the validator text log file. The log can also be streamed by passing `--log`. Status output is suppressed in this case.
+
+Identity: EPhgPANa5Rh2wa4V2jxt7YbtWa3Uyw4sTeZ13cQjDDB8
+
+- The validator's identity in the [gossip network]
+
+Version: 1.6.7
+
+- The software version
+
+Gossip Address: 127.0.0.1:1024
+
+TPU Address: 127.0.0.1:1027
+
+JSON RPC URL: http://127.0.0.1:8899
+
+The network address of the [Gossip], [Transaction Processing Unit] and [JSON RPC] service, respectively
+
+- 00:36:02 | Processed Slot: 5142 | Confirmed Slot: 5142 | Finalized Slot: 5110 | Snapshot Slot: 5100 | Transactions: 5142 | ◎499.974295000
+
+Session running time, current slot of the three block commitment levels, slot height of the last snapshot, transaction count, voting authority balance

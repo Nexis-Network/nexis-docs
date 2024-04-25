@@ -14,7 +14,7 @@ export default function HomeCtaLinks() {
         />
 
         <Card
-          to="operations"
+          to="validating"
           header={{
             label: "Operate a Validator",
             translateId: "cta-validators",

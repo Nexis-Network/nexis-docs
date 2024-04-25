@@ -1,0 +1,1217 @@
+---
+title: Solidity Tutorials
+---
+
+
+# Solidity Tutorials 
+
+<GuidesOther
+  id="deploy_tutorial"
+  title="Deploy a NFT (ERC-721) Tutorial"
+  level={2}
+  isShow={false}
+/>
+
+An ERC-721 token is a type of non-fungible token (NFT) on the Ethereum blockchain, defined by the Ethereum Request for Comments 721 (ERC-721) standard.
+
+## Background
+
+An ERC-721 token is a type of non-fungible token (NFT) on the Ethereum blockchain, defined by the Ethereum Request for Comments 721 (ERC-721) standard. It represents unique digital assets, such as digital art, virtual real estate, collectibles, and digital goods. The standard defines a set of rules and interfaces for managing and transferring NFTs on the Ethereum network.
+
+Unlike ERC-20 tokens, which are fungible and interchangeable, ERC-721 tokens are non-fungible, meaning each token has a unique value and is not interchangeable with other tokens. Each ERC-721 token has a unique identifier (Token ID) and can be associated with specific metadata, such as descriptions, images, or other information related to the digital asset.
+
+The ERC-721 standard includes functions for:
+
+1. Token ownership management: These functions allow users to check the ownership of a token, transfer ownership, and approve others to transfer the token on their behalf.
+2. Token metadata management: These functions help manage metadata associated with each token, such as token URI, which can be used to store information about the digital asset.
+3. Enumeration: These functions enable enumeration of owned tokens, providing a way to count and list tokens owned by a specific address.
+
+By implementing the ERC-721 standard, developers can create NFTs with unique properties and ensure compatibility with various wallets, marketplaces, and platforms that support this standard.
+
+Creating an ERC-721 NFT Smart Contract involves several steps. Here's a detailed guide to help you create one using Solidity and the Ethereum network:
+
+## Set up your environment
+
+### To begin, you will need the following tools:
+
+- [Node.js](https://nodejs.org/en/download) (v8.9.4 or later)
+- [Truffle](https://trufflesuite.com/docs/truffle/how-to/install/) (v5.x.x)
+- [Ganache](https://trufflesuite.com/ganache/) (for local blockchain deployment)
+- A text editor or IDE (e.g., [Visual Studio Code](https://code.visualstudio.com/download))
+
+### To install Truffle, use the following command:
+
+```bash {{ title: '' }}
+npm install -g truffle
+```
+
+## Create a new Truffle project
+
+### In your terminal, navigate to the directory where you want to create the project and run:
+
+```bash {{ title: '' }}
+truffle init
+```
+
+This command will generate a new Truffle project with basic files and folders.
+
+## Install OpenZeppelin Contracts library
+
+ERC-721 is based on the OpenZeppelin Contracts library, which offers a secure and well-tested implementation of the standard.
+
+### Install the library by running:
+
+```bash {{ title: '' }}
+npm install @openzeppelin/contracts
+```
+
+## Create an ERC-721 smart contract
+
+In your Truffle project, navigate to the `contracts` folder and create a new file called `MyNFT.sol`.
+
+### Add the following code:
+
+```js {{ title: '' }}
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+
+contract MyNFT is ERC721 {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIds;
+
+    constructor() ERC721("MyNFT", "MNFT") {}
+
+    function mintNFT(address recipient, string memory tokenURI) public returns (uint256) {
+        _tokenIds.increment();
+
+        uint256 newItemId = _tokenIds.current();
+        _mint(recipient, newItemId);
+        _setTokenURI(newItemId, tokenURI);
+
+        return newItemId;
+    }
+}
+```
+
+This code imports the necessary libraries and creates a basic ERC-721 NFT smart contract called `MyNFT`. The `mintNFT` function allows you to mint new NFTs and assign a `tokenURI` for metadata.
+
+## Deploy the smart contract
+
+Create a new file in the `migrations` folder named `2_deploy_contract.js` and add the following code:
+
+```js {{ title: '' }}
+const MyNFT = artifacts.require('MyNFT')
+
+module.exports = function (deployer) {
+  deployer.deploy(MyNFT)
+}
+```
+
+This code tells Truffle how to deploy the smart contract to the Ethereum network.
+
+## Compile and deploy the contract
+
+Start Ganache and make sure you have a local blockchain running. In your terminal, compile the contract using:
+
+```bash {{ title: '' }}
+truffle compile
+```
+
+Once compiled, deploy the contract to the local blockchain with:
+
+```bash {{ title: '' }}
+truffle migrate
+```
+
+## Interact with the smart contract
+
+You can interact with the smart contract using Truffle console, web3.js, or other tools like the Nexis Wallet Chrome extension and [Remix IDE](https://remix.ethereum.org/).
+
+To use the Truffle console, run:
+
+```bash {{ title: '' }}
+truffle console
+```
+
+Inside the console, you can mint an NFT:
+
+```js {{ title: '' }}
+let instance = await MyNFT.deployed()
+await instance.mintNFT('0xYourAddress', 'https://your-token-uri.com/')
+```
+
+Replace "0xYourAddress" with the recipient's Ethereum address and "https://your-token-uri.com/" with the actual token URI.
+
+You can utilize [Pinata](https://www.pinata.cloud/) to upload the images of your NFT and their metadata, which is in JSON format.
+
+To learn more about the recommended metadaa structure you can vieew the OpenSea metadata guidelines [here](https://docs.opensea.io/docs/metadata-standards).
+
+Below is an example of a metadata JSON file structure
+
+```json {{ title: '' }}
+{
+  "description": "Friendly OpenSea Creature that enjoys long swims in the ocean.",
+  "external_url": "https://openseacreatures.io/3",
+  "image": "https://storage.googleapis.com/opensea-prod.appspot.com/puffs/3.png",
+  "name": "Dave Starbelly",
+  "attributes": [
+	{
+		"trait_type": "Background",
+		"value": "Green"
+	},
+	{
+		"trait_type": "Head",
+		"value": "Hat"
+	},
+	{
+    "trait_type": "Level",
+    "display_type": "number",
+    "value": 10
+  }
+	...
+]
+...
+}
+```
+
+Now you have a basic understanding of creating an ERC-721 NFT smart contract using Solidity, Truffle, and the OpenZeppelin Contracts library. You can expand the functionality by adding more features such as royalty payments, access.
+
+Make sure to always get your code audited before deploying it live. A good resource for quick auditing is [SolidityScan](https://solidityscan.com/).
+
+This tutorial is for informational purposes only. We did not have the code audited and do not take ownership of any of the code associated with this tutorial.
+
+<GuidesOther
+  id="deploy_contract"
+  title="Deploy a Smart Contract"
+  level={2}
+  isShow={false}
+/>
+
+Nexis Network utilizes the Ethereum Virtual Machine (EVM) in the backend. Smart contracts are written in Solidity and they can function on the Nexis Network as they do on Ethereum.
+
+To deploy a smart contract, you send a Nexis Network transaction containing your bytecode without specifying any recipients.
+
+After the contract is deployed, it will be available to all users of the Nexis Network. Smart contracts have a Fantom address like other accounts.
+
+## Requirements
+
+- Bytecode (compiled code) of your smart contract
+- Nexis (NZT) for gas costs
+- Deployment script/plugin
+- Access to a Nexis Network node, either by running your own node or API access to a node.
+
+## Tools
+
+- Bytecode (compiled code) of your smart contract
+- Access to a Nexis Network node, either by running your own node or API access to a node.
+- [Truffle](https://www.trufflesuite.com): Development environment, testing framework and asset pipeline for blockchains using the EVM
+- [Remix](https://remix.ethereum.org/): IDE that’s used to write, compile, debug & deploy Solidity code ll in your browser.
+- [Solidity](https://solidity.readthedocs.io): Solidity is an object-oriented, high-level language for implementing smart contracts.
+- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts): OpenZeppelin Contracts helps you minimize risk by using battle-tested libraries of smart contracts for Ethereum and other blockchains.
+
+<GuidesOther
+  id="deploy_token"
+  title="Deploy a ERC-20 Token"
+  level={2}
+  isShow={false}
+/>
+
+This is a tutorial on how to deploy an ERC-20 token smart contract on the Nexis Network using the Solidity programming language.
+
+One of the most significant smart contract standards on Nexis Network is known as ERC-20, which has emerged as the technical standard used for all smart contracts on the Ethereum blockchain for fungible token implementations.
+
+ERC-20 defines a common list of rules that all fungible Nexis Network tokens should adhere to. Consequently, this token standard empowers developers of all types to accurately predict how new tokens will function within the larger Nexis Network system. This simplifies and eases developers’ tasks, because they can proceed with their work, knowing that each and every new project won’t need to be redone every time a new token is released, as long as the token follows the rules.
+
+```js {{ title: '' }}
+pragma solidity ^0.6.0;
+
+interface IERC20 {
+
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+```
+
+Here is a line-by-line explainer of what every function is for. After this we’ll present a simple implementation of the ERC-20 token.
+
+## Getters
+
+```js {{ title: '' }}
+function totalSupply() external view returns (uint256);
+```
+
+The ERC-20 standard allows an address to give an allowance to another address to be able to retrieve tokens from it. This getter returns the remaining number of tokens that the `spender` will be allowed to spend on behalf of `owner`. This function is a getter and does not modify the state of the contract and should return 0 by default
+
+## FUNCTIONS
+
+```js {{ title: '' }}
+function transfer(address recipient, uint256 amount) external returns (bool);
+```
+
+Moves the `amount` of tokens from the function caller address (`msg.sender`) to the recipient address. This function emits the `Transfer` event defined later. It returns true if the transfer was possible.
+
+```js {{ title: '' }}
+function approve(address spender, uint256 amount) external returns (bool);
+```
+
+Set the amount of `allowance` the `spender` is allowed to transfer from the function caller (`msg.sender`) balance. This function emits the Approval event. The function returns whether the allowance was successfully set.
+
+```js {{ title: '' }}
+function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+```
+
+Moves the `amount` of tokens from `sender` to `recipient` using the allowance mechanism. amount is then deducted from the caller’s allowance. This function emits the `Transfer` event.
+
+## EVENTS
+
+```js {{ title: '' }}
+event Transfer(address indexed from, address indexed to, uint256 value);
+```
+
+This event is emitted when the amount of tokens (value) is sent from the `from` address `to` the to address.
+
+In the case of minting new tokens, the transfer is usually `from` the 0x00..0000 address while in the case of burning tokens the transfer is `to` 0x00..0000.
+
+```js {{ title: '' }}
+event Approval(address indexed owner, address indexed spender, uint256 value);
+```
+
+This event is emitted when the amount of tokens (`value`) is approved by the `owner` to be used by the `spender`.
+
+## A BASIC IMPLEMENTATION OF ERC-20 TOKENS
+
+Here is the most simple code to base your ERC-20 token from:
+
+```js {{ title: '' }}
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+
+contract ERC20Basic is IERC20 {
+
+    string public constant name = "ERC20Basic";
+    string public constant symbol = "ERC";
+    uint8 public constant decimals = 18;
+
+
+    mapping(address => uint256) balances;
+
+    mapping(address => mapping (address => uint256)) allowed;
+
+    uint256 totalSupply_ = 10 ether;
+
+
+   constructor() {
+    balances[msg.sender] = totalSupply_;
+    }
+
+    function totalSupply() public override view returns (uint256) {
+    return totalSupply_;
+    }
+
+    function balanceOf(address tokenOwner) public override view returns (uint256) {
+        return balances[tokenOwner];
+    }
+
+    function transfer(address receiver, uint256 numTokens) public override returns (bool) {
+        require(numTokens <= balances[msg.sender]);
+        balances[msg.sender] = balances[msg.sender]-numTokens;
+        balances[receiver] = balances[receiver]+numTokens;
+        emit Transfer(msg.sender, receiver, numTokens);
+        return true;
+    }
+
+    function approve(address delegate, uint256 numTokens) public override returns (bool) {
+        allowed[msg.sender][delegate] = numTokens;
+        emit Approval(msg.sender, delegate, numTokens);
+        return true;
+    }
+
+    function allowance(address owner, address delegate) public override view returns (uint) {
+        return allowed[owner][delegate];
+    }
+
+    function transferFrom(address owner, address buyer, uint256 numTokens) public override returns (bool) {
+        require(numTokens <= balances[owner]);
+        require(numTokens <= allowed[owner][msg.sender]);
+
+        balances[owner] = balances[owner]-numTokens;
+        allowed[owner][msg.sender] = allowed[owner][msg.sender]-numTokens;
+        balances[buyer] = balances[buyer]+numTokens;
+        emit Transfer(owner, buyer, numTokens);
+        return true;
+    }
+}
+```
+
+<GuidesOther
+  id="build_marketplace"
+  title="How To Build an NFT Marketplace"
+  level={2}
+  isShow={false}
+/>
+
+[Non-Fungible](https://chain.link/education/nfts) Tokens (NFTs) have captured the imagination of the [Web3](https://chain.link/education/web3) community. While the most powerful NFT use cases might still be to come, this technology is already transforming digital ownership, identity, creative expression, and community membership.
+
+Because NFTs are digital assets that can be bought, sold, or traded, NFT marketplaces play an important role in holding inventory and connecting buyers and sellers.
+
+In this blog, we are going to build the “backend” of an NFT marketplace using Solidity. We’ll go through the process for building the smart contracts that hold the business logic for our NFT marketplace step-by-step. In practice, this means creating a single NftMarketplace.sol smart contract and a sample [ERC721-compliant token](https://eips.ethereum.org/EIPS/eip-721) (NFT) contract which we can use to list on our marketplace.
+
+This blog is intended for those with some coding experience. If you’re comfortable with basic JavaScript, you will be able to follow along. It would also help to have some familiarity with common Ethereum terminology, which you can brush up on by taking a look through [this glossary](https://ethereum.org/en/glossary/).
+
+The marketplace will have the following basic operations:
+
+- List the NFT.
+- Update and cancel the listing.
+- Buy the NFT (transfer ownership).
+- Get a listing.
+- Get a seller’s proceeds.
+
+These operations will be implemented on the marketplace smart contract. It’s recommended that you take a moment to understand the above operations because the coding logic for them naturally comes from analyzing the inputs and outputs for each.
+
+For example, what data do we need to list an NFT on the marketplace? We would need the token ID for sure. Since this is a marketplace that can list multiple unrelated NFTs, we would also need the contract address for each “family” of NFTs. Additionally, since we are listing NFTs for sale, we need to be able to add the price of each token as well.
+
+We will go deeper into defining our function signatures shortly, but first let’s get our project and environment set up.
+
+If you’d like to see the reference repo for this project, you can find it [here](https://github.com/NexisNetwork/nft-marketplace-tutorial). It goes more in-depth than what we will cover here, so it’s useful if you want to dive deeper into this project.
+
+## Project Setup
+
+We will use yarn, so run `npm install -g yarn` on your machine to install it globally. You’ll also need to make sure you have [nodeJS runtime](https://nodejs.org/en/) on your machine too, so check you have it installed by running `node –version`.
+
+We are going to use the [Hardhat](http://hardhat.org/) Ethereum development environment to compile, deploy, test, and interact with our smart contracts, so take a moment to read through the Hardhat [Getting Started guide](https://hardhat.org/getting-started/).
+
+We will refer to your project directory in paths as `<<root>>`, so open up the terminal app and cd into your root directory, then open up your IDE (you can use any IDE you’re comfortable with that supports Javascript). Create a `package.json` file in your project directory and paste the content from [here](https://github.com/NexisNetwork/nft-marketplace-tutorial). You’ll see that it contains the [NPM](<https://en.wikipedia.org/wiki/Npm_(software)>) dependency packages, including those referred in Hardhat’s Getting Started guide. Then run `yarn install` to install all the project dependencies. When the installation is complete you should see a node_modules folder inside your project root. This contains all your dependencies, including Hardhat.
+
+In this tutorial we will develop on Hardhat’s local blockchain network, which means we aren’t interacting with testnets or the Ethereum mainnet. When you’re ready to test on a testnet like Rinkeby, follow these steps from the [repo’s README](https://github.com/NexisNetwork/nft-marketplace-tutorial).
+
+In your project root, run `/<<root>>` yarn hardhat to initialize Hardhat and select option 4: “Create an empty hardhat.config.js”.
+
+
+
+Creating empty Hardhat config {{className: 'text-center'}}
+
+Once the Hardhat initialization is done, you will have an empty `hardhat.config.js` file in your project root. Now you have a choice: you can [paste this content](https://github.com/NexisNetwork/nft-marketplace-tutorial) into that file if you plan to deploy on a live testnet, because you’ll need the various constants declared in there that specify configuration details for different testnet and mainnet networks. Note that to access testnet or mainnet nodes, you will need to use an Ethereum node access provider such as [Infura](http://infura.io), [Alchemy](http://alchemy.io), or [Moralis](http://moralis.io). We don’t need them for this blog, but they are necessary when you decide to test on external testnets or deploy to production on mainnet.
+
+Or, if you just want to follow along with this blog, you can copy and paste the config code snippet below. We will refer to this file as “Hardhat Config” going forward, and for this tutorial the important part is the exported object (`module.exports = {defaultNetwork: {...} }` ). This is the object that holds our project configuration, which defines our default, hardhat, and localhost networks.
+
+For the purposes of this following along with this blog, your exported configuration object can look like this minimal config, so you can replace the exported object in that linked file with this:
+
+```js {{ title: '' }}
+require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
+require("hardhat-deploy");
+require("solidity-coverage");
+require("hardhat-contract-sizer");
+require("dotenv").config();
+
+module.exports = {
+  defaultNetwork: "hardhat",
+  networks: {
+    hardhat: {
+      chainId: 31337,
+    },
+
+    localhost: {
+      chainId: 31337,
+    },
+  },
+  namedAccounts: {
+    deployer: {
+      default: 0, // here this will by default take the first account as deployer
+      1: 0, // similarly on mainnet (network 1) it will take the first
+account as deployer. Note though that depending on how hardhat network are
+configured, the account 0 on one network can be different than on another
+    },
+  },
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.7",
+      },
+      {
+        version: "0.4.24",
+      },
+    ],
+  },
+  mocha: {
+    timeout: 200000, // 200 seconds max for running tests
+  },
+};
+```
+
+Our project will have the following folders:
+
+- A `contracts` folder. This holds our NFT marketplace logic and also the sample NFT contract.
+- A `deploy` folder. This is used with the hardhat-deploy plugin and houses our deployment scripts, which will deploy compiled smart contracts to the Hardhat-provided local development blockchains.
+- A `scripts` folder. This holds the scripts that we use to interact with the deployed contracts locally on our Hardhat development blockchain.
+
+Let’s get started building our marketplace.
+
+## Building the NFT Marketplace
+
+In your project root, create a new `contracts` folder. Inside that folder, create the `NftMarketplace.sol` file (your file path will look like `../<< root >>/contracts/NftMarketplace.sol`).
+
+Now let’s consider the method signatures we need in the `NftMarketplace` smart contract for the various operations we discussed above. They’re going to look like this:
+
+```js {{ title: '' }}
+function listItem(
+        address nftAddress,
+        uint256 tokenId,
+        uint256 price
+    ) {}
+
+function cancelListing(address nftAddress, uint256 tokenId){}
+
+function buyItem(address nftAddress, uint256 tokenId){}
+
+function updateListing(
+        address nftAddress,
+        uint256 tokenId,
+        uint256 newPrice
+    ){}
+function withdrawProceeds(){} // method caller should be withdrawer
+
+function getListing(address nftAddress, uint256 tokenId){}
+```
+
+While this looks simple enough, putting together the smart contract requires a lot of careful thinking, checking, and overcoming constraints. So let’s go deeper. We also want to protect against [re-entrancy attacks](https://blog.openzeppelin.com/reentrancy-after-istanbul) that exploit the way Ethereum smart contracts work to run repeated and undesirable execution of code—often code that transfers token ownership. A good smart contract developer must be familiar with these potential vulnerabilities.
+
+In implementing the marketplace’s logic, we will use the following fields and data structures:
+
+- A `Listing` struct with price and seller property variables.
+- Three [events](https://docs.soliditylang.org/en/v0.8.13/contracts.html#events)—`ItemListed`, `ItemCanceled` and `ItemBought`.
+- Two mappings—`s_listings` and `s_proceeds`, which are the [state variables](https://docs.soliditylang.org/en/v0.8.13/contracts.html#events) stored on the blockchain.
+- Three [function modifiers](https://docs.soliditylang.org/en/v0.8.13/contracts.html#function-modifiers).
+
+Don’t worry—you’ll understand each of these pieces as we continue to build our smart contract.
+
+Let’s start by declaring the smart contract.
+
+```js {{ title: '' }}
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract NftMarketplace is ReentrancyGuard {
+// TODO…
+}
+```
+
+You’ll see that we are importing two files from [OpenZeppelin](https://openzeppelin.com/contracts/), which provides open-source, audited, and secure smart contract templates that can be reused. Our smart contract inherits from its `ReentrancyGuard` smart contract ([see it on Github](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol)), which provides very valuable protections, modifiers, and methods that we can use. We must also import the `IERC721.sol` file, an interface that we will be using shortly. However, our marketplace smart contract does not implement the ERC721 token standard because it is not the token contract.
+
+### Implementing `listItem()`
+
+Let’s start with the `listItem()` method, the signature of which you’re already familiar with. We’ll make it an external function because it needs to be called by other contracts or by end user accounts (from the frontend web application, for example). We also want listItem() to do the following:
+
+- Ensure that the item being listed is not already listed. We do this with a [Solidity function modifier](https://docs.soliditylang.org/en/v0.8.13/contracts.html#function-modifiers).
+- Ensure that the person listing the item (i.e. calling this method) is the owner.
+- Ensure that the token’s contract has “approved” our NFT marketplace to operate the token (to transfer it, etc.).
+- Check that the price is greater than zero wei.
+- Emit a listing event.
+- Store the listing details in the smart contract’s state (i.e. the marketplace application’s state).
+
+Now let’s write this method inside the marketplace contract.
+
+```js {{ title: '' }}
+function listItem(
+        address nftAddress,
+        uint256 tokenId,
+        uint256 price
+    )
+        external
+        notListed(nftAddress, tokenId, msg.sender)
+        isOwner(nftAddress, tokenId, msg.sender)
+    {
+        if (price <= 0) {
+            revert PriceMustBeAboveZero();
+        }
+        IERC721 nft = IERC721(nftAddress);
+        if (nft.getApproved(tokenId) != address(this)) {
+            revert NotApprovedForMarketplace();
+        }
+        s_listings[nftAddress][tokenId] = Listing(price, msg.sender);
+        emit ItemListed(msg.sender, nftAddress, tokenId, price);
+    }
+```
+
+### Function Modifiers, Events, and State Variables
+
+Now let’s implement the [function modifiers](https://docs.soliditylang.org/en/v0.8.13/contracts.html#function-modifiers), [events](https://docs.soliditylang.org/en/v0.8.13/contracts.html#events), and application [state variables](https://docs.soliditylang.org/en/v0.8.13/structure-of-a-contract.html#state-variables) that hold data. Look carefully at the comments below to know where to place these pieces, or refer to the [reference Github repo](https://github.com/PatrickAlphaC/hardhat-nft-marketplace-fcc/blob/main/contracts/NftMarketplace.sol).
+
+```js {{ title: '' }}
+contract NftMarketplace is ReentrancyGuard {
+
+    struct Listing {
+        uint256 price;
+        address seller;
+    }
+
+   event ItemListed(
+        address indexed seller,
+        address indexed nftAddress,
+        uint256 indexed tokenId,
+        uint256 price
+    );
+
+   // State Variables
+   mapping(address => mapping(uint256 => Listing)) private s_listings;
+   mapping(address => uint256) private s_proceeds;
+
+   // Function modifiers
+   modifier notListed(
+        address nftAddress,
+        uint256 tokenId,
+        address owner
+   ) {
+        Listing memory listing = s_listings[nftAddress][tokenId];
+        if (listing.price > 0) {
+            revert AlreadyListed(nftAddress, tokenId);
+        }
+        _;
+    }
+
+    modifier isOwner(
+        address nftAddress,
+        uint256 tokenId,
+        address spender
+    ) {
+        IERC721 nft = IERC721(nftAddress);
+        address owner = nft.ownerOf(tokenId);
+        if (spender != owner) {
+            revert NotOwner();
+        }
+        _;
+    }
+
+    //….. Rest of smart contract …..
+}
+```
+
+You’ll see that :
+
+- The `Listing` struct holds only two pieces of information—the seller’s Ethereum account address and the listing price for the seller’s token.
+- The state variable `s_listings` is a mapping of NFT contract addresses to token IDs that themselves point to `Listing` data structs. So each listen token ID points to data that identifies the seller of that token and the price of that token.
+- The state variable `s_proceeds` is a mapping between a seller’s address and the amount they’ve earned in sales.
+- The `ItemListed` event contains useful information—the seller’s account address, token ID, token contract address, and the listed item’s price.
+
+We also add two function modifiers. `notListed` checks that the token ID is not currently listed (we don’t want to go through the compute operations of listing something that is already contained in `s_listings`). If there is such a listing, it reverts the transaction with an `AlreadyListed` error. We will implement these errors in a moment. `notListed` also takes in details about the token and then checks to see whether that listing has a non-zero price (if you remember, our `listItem()` method requires that the price must be higher than zero. It will revert with a `PriceMustBeAboveZero()` error if the condition is not met).
+
+The second modifier is the `isOwner()` modifier, which checks whether the entity that calls `listItem()` actually owns that item. If not, the call to `listItem()` reverts with the `notOwner()` error.
+
+### Custom Errors
+
+So let’s talk about these errors. They’re Solidity [custom errors](https://blog.soliditylang.org/2021/04/21/custom-errors) and we haven’t implemented them yet. They are actually declared outside the main body of the smart contract. Let’s declare a bunch of them now because we’re going to use them in the marketplace functions shortly. Note that we are declaring them after the import statements but before our smart contract declaration.
+
+```js {{ title: '' }}
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price);
+error ItemNotForSale(address nftAddress, uint256 tokenId);
+error NotListed(address nftAddress, uint256 tokenId);
+error AlreadyListed(address nftAddress, uint256 tokenId);
+error NoProceeds();
+error NotOwner();
+error NotApprovedForMarketplace();
+error PriceMustBeAboveZero();
+
+contract NftMarketplace is ReentrancyGuard { … }
+```
+
+Also note how custom errors may or may not take arguments. Arguments, if passed, contain useful data about the error.
+
+You’ll see that our first method, the `listItem()` method, uses three of these custom errors:
+
+- The `NotOwner()` error (via the `isOwner()` modifier).
+- The `PriceMustBeAboveZero()` error.
+- The `NotApprovedForMarketplace()` error.
+
+These errors get “thrown”, which in Solidity means that the execution of the surrounding function is “reverted” when certain checks and conditions fail.
+
+### Implementing `cancelListing()`
+
+If a token owner wants to de-list their token, it’s really a question of no longer holding that `Listing` in the application state. This means we must delete the corresponding entry from the `s_listings` state mapping. So we write the following method in after `listItem()`.
+
+```js {{ title: '' }}
+function cancelListing(address nftAddress, uint256 tokenId)
+        external
+        isOwner(nftAddress, tokenId, msg.sender)
+        isListed(nftAddress, tokenId)
+    {
+        delete (s_listings[nftAddress][tokenId]);
+        emit ItemCanceled(msg.sender, nftAddress, tokenId);
+    }
+```
+
+This is an externally callable method, and it takes both the token’s contract address and the token ID as parameters. It uses two function modifiers to check that the caller is the owner and that the token is listed (worth checking, since we are trying to de-list an item!). We delete the listing and then we emit an event.
+
+We have not implemented the `isOwner` modifier yet—we’ve only done the opposite check, `isNotOwner`! So back in the modifiers section of your code, insert the following modifier:
+
+```js {{ title: '' }}
+modifier isListed(address nftAddress, uint256 tokenId) {
+        Listing memory listing = s_listings[nftAddress][tokenId];
+        if (listing.price <= 0) {
+            revert NotListed(nftAddress, tokenId);
+        }
+        _;
+    }
+```
+
+If you study this, you’ll see it’s the opposite logic to `isNotListed`. This modifier reverts if the item is not listed, whereas `isNotListed` reverts if the item is listed. If that’s confusing, remember what the modifier is called—it refers to the desired condition that is being checked.
+
+Now we need to also write the `ItemCanceled` event, which gets emitted in the `cancelListing()` method. But we’re going to need a bunch of events for the other methods anyway, so we might as well implement them all now and get them out of the way.
+
+### The Other Events
+
+If we look at our list of operations and their function signatures, we know that we need to write `ItemCanceled` and `ItemBought` events next.
+
+So, under our `ItemListed` event we insert:
+
+```js {{ title: '' }}
+event ItemCanceled(
+        address indexed seller,
+        address indexed nftAddress,
+        uint256 indexed tokenId
+    );
+
+ event ItemBought(
+        address indexed buyer,
+        address indexed nftAddress,
+        uint256 indexed tokenId,
+        uint256 price
+    );
+```
+
+You’ll see that the only real difference is that one refers to the seller and the other refers to the buyer—simple enough.
+
+Now let’s implement the rest of our marketplace operations.
+
+### Implementing `BuyItem()`
+
+This method is the heart of the marketplace. It deals directly with payment—meaning the actual exchange of an NFT for some sort of digital asset. In this case, we are going to have our marketplace accept payments in ether ([denominated in wei](https://ethdocs.org/en/latest/ether.html#denominations)). This is also where we need the re-entrancy guard we discussed earlier to prevent a malicious account from draining all the tokens.
+
+Given all this, we need to ensure the following:
+
+- The `BuyItem()` is externally callable, accepts payments, and protects against re-entrancy.
+- The payment received is not less than the listing’s price.
+- The payment received is added to the seller’s proceeds.
+- The listing is deleted after the exchange of value.
+- The token is actually transferred to the buyer.
+- The right event is emitted.
+
+Note that we make an important assumption here that the seller has not de-approved the marketplace as the operator of the token. Remember that we did the approval check in the `ListItem()` method, but between listing the sale, the seller may have changed the approvals.
+
+So, with all the above in mind, here’s what this method looks like:
+
+```js {{ title: '' }}
+function buyItem(address nftAddress, uint256 tokenId)
+        external
+        payable
+        isListed(nftAddress, tokenId)
+        nonReentrant
+    {
+        Listing memory listedItem = s_listings[nftAddress][tokenId];
+        if (msg.value < listedItem.price) {
+            revert PriceNotMet(nftAddress, tokenId, listedItem.price);
+        }
+
+        s_proceeds[listedItem.seller] += msg.value;
+        delete (s_listings[nftAddress][tokenId]);
+        IERC721(nftAddress).safeTransferFrom(listedItem.seller, msg.sender, tokenId);
+        emit ItemBought(msg.sender, nftAddress, tokenId, listedItem.price);
+    }
+```
+
+In the above snippet, it’s important to note that we update the seller’s balance in `s_proceeds`. This stores the total ether the seller has received for selling their NFTs. We then call on the listed token’s contract to transfer ownership of the token to the buyer (`msg.sender` is the buyer calling this method). But we do not send the seller their proceeds. This is because we have a `withdrawProceeds` method later. This pattern “pulls” rather than “pushes” the proceeds; the principle behind the design is covered in [this article](https://fravoll.github.io/solidity-patterns/pull_over_push.html). In a nutshell, having the seller actively withdraw the funds is a safer operation than having our marketplace contract push it to them, as pushing it may cause execution failures that our contract cannot control. It is better to delegate the power, choice, and responsibility of transferring sales proceeds to the seller, with our contract solely responsible for storing the sale proceeds’ balance.
+
+### Implementing `updateListing()`
+
+This method allows a seller to update the price in their listing. This is simply a question of:
+
+- Checking that the item is already listed and the caller owns the token.
+- Checking that the new price is not zero.
+- Guarding against re-entrancy.
+- Updating the `s_listing` state mapping so that the correct `Listing` data object now refers to the updated price.
+- Emitting the right event.
+
+Let’s do it!
+
+```js {{ title: '' }}
+function updateListing(
+        address nftAddress,
+        uint256 tokenId,
+        uint256 newPrice
+    )
+        external
+        isListed(nftAddress, tokenId)
+        nonReentrant
+        isOwner(nftAddress, tokenId, msg.sender)
+    {
+        if (newPrice == 0) {
+            revert PriceMustBeAboveZero();
+        }
+
+        s_listings[nftAddress][tokenId].price = newPrice;
+        emit ItemListed(msg.sender, nftAddress, tokenId, newPrice);
+    }
+```
+
+### Implementing `withdrawProceeds()`
+
+Since we’re using the pull method as discussed when we implemented `BuyItem()`, withdrawing proceeds means simply sending the caller of the method whatever their balance in the `s_proceeds` state variable is. If a caller does not have any proceeds, we revert with a `NoProceeds()` custom error. This works if we trust that our code updates the `s_proceeds` state variable correctly, which, in our simple marketplace, it does. Importantly, we need to update the seller’s proceeds balance to zero.
+
+```js {{ title: '' }}
+function withdrawProceeds() external {
+        uint256 proceeds = s_proceeds[msg.sender];
+        if (proceeds <= 0) {
+            revert NoProceeds();
+        }
+        s_proceeds[msg.sender] = 0;
+
+        (bool success, ) = payable(msg.sender).call{value: proceeds}("");
+        require(success, "Transfer failed");
+    }
+```
+
+In the above method, there is an unusual-looking statement:
+
+`payable(msg.sender).call{value: proceeds}("");` . This is how newer versions of Solidity send value to caller addresses. `Value` here refers to the amount of ether being sent, and the odd-looking `(“”)` is basically saying that the Solidity `call()` function is being called with no arguments, signified by the empty string being passed in. You can read more about this syntax [here](https://ethereum.stackexchange.com/questions/96685/how-to-use-address-call-in-solidity).
+
+The `.call()` function returns two values, a boolean denoting success or not, and the data bytes—which we don’t use and hence don’t assign to any variable.
+
+If `success` is false the entire method call reverts (is treated as an exception) by operation of [the require() statement](https://docs.soliditylang.org/en/v0.4.25/units-and-global-variables.html#error-handling).
+
+### Implementing Utility Getter Methods
+
+Now we’re almost done with our NFT marketplace! We just need to add two more utility methods. One utility method will help us retrieve the `Listing` object associated with a specific token ID so we can find out who the seller is and how much the token is listed for. The second utility function helps us retrieve how much a seller has earned (i.e. their sales proceeds). Note that these two methods are “getter” functions for specific values in our state variables.
+
+```js {{ title: '' }}
+function getListing(address nftAddress, uint256 tokenId)
+        external
+        view
+        returns (Listing memory)
+    {
+        return s_listings[nftAddress][tokenId];
+    }
+
+    function getProceeds(address seller) external view returns (uint256) {
+        return s_proceeds[seller];
+    }
+```
+
+With this, our NFT marketplace is complete! Now what we need to do is write some scripts to deploy to our Hardhat local blockchain and then run some scripts to list tokens.
+
+Before we go on, let’s do a quick compile check. In your terminal, from inside your project root directory, run `yarn hardhat compile`. If this works, then you’re golden. If it doesn’t, please check the error message and retrace your steps. Debugging is a critical part of the development process!
+
+### Sample NFT Smart Contract
+
+But before we move on to the scripts, we need a sample NFT smart contract so that we can mint tokens and list them on our marketplace. We’ll conform to the ERC721 token spec so we can inherit from OpenZeppelin’s ERC721 library. In the reference repo there are two sample NFT contracts in `<<root>>/contracts/test`. They don’t have to be inside a test folder, but they do have to be somewhere under the `contracts` folder.
+
+So let’s make our `BasicNft.sol`, which points to a cute dog picture on IPFS that will function as our token’s artwork. The NFT contract is fairly simple.
+
+```js {{ title: '' }}
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+contract BasicNft is ERC721 {
+    string public constant TOKEN_URI =
+
+"ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json";
+    uint256 private s_tokenCounter;
+
+    event DogMinted(uint256 indexed tokenId);
+
+    constructor() ERC721("Dogie", "DOG") {
+        s_tokenCounter = 0;
+    }
+
+    function mintNft() public {
+        _safeMint(msg.sender, s_tokenCounter);
+        emit DogMinted(s_tokenCounter);
+        s_tokenCounter = s_tokenCounter + 1;
+    }
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+        return TOKEN_URI;
+    }
+
+    function getTokenCounter() public view returns (uint256) {
+        return s_tokenCounter;
+    }
+}
+```
+
+Note that `tokenURI()` and `getTokenCounter()` are getters for state variables. The real logic here is in the `mintNft()` method, where we utilize the OpenZeppelin ERC721 base contract that we are inheriting from. `mintNft()` mints the token and registers the `msg.sender` (i.e. the function’s caller) as the owner of the NFT with the token ID passed in the second argument. We are using the `s_tokenCounter` state variable to track how many tokens are minted and also the token IDs. So we need to increment the counter after we emit the `DogMinted` event.
+
+You can copy the second sample NFT contract, called `BasicNftTwo.sol`, from here if you want to have more than one type of NFT on your marketplace (the code in this blog refers to both, but it’s optional). You’ll see it’s pretty much the same as the `BasicNft.sol`, but the `TOKEN_URI` state variable points to a different IPFS file (a different species of dog!). Note that both contracts go into `<<root>>/contracts/test`.
+
+Run `yarn hardhat compile` again to make sure everything is compiling as intended, and be sure to check that your NFT marketplace contract and your NFT contracts compile without errors.
+
+## Deployment Scripts
+
+Now let’s start on those deployment scripts.
+
+The first step is understanding what a deployment script is. Deployment scripts compile Solidity into bytecode that can then be deployed onto an EVM-compatible blockchain for execution. Live smart contracts are data stored on the blockchain, and they’re stored as bytecode. The compile step also produces a JSON artifact file that contains the [contract metadata](https://docs.soliditylang.org/en/v0.8.12/metadata.html#contract-metadata), which includes a bunch of useful data such as the ABI (application binary interface)—a “schema” with which we can interact with the smart contract.
+
+So deployment scripts are scripts that compile our smart contracts, and deploy them to a blockchain. You can take a quick read of the [Hardhat docs on deploying contracts](https://hardhat.org/guides/deploying.html) to grasp the principles, but we use a NPM package called “[hardhat-deploy](https://github.com/wighawag/hardhat-deploy)” which automates some of the steps for us. It also automatically runs all the scripts that we put into a deploy folder and adds a [Hardhat task](https://hardhat.org/getting-started/#running-tasks) called deploy to the tasks registered with Hardhat so that all we need to do is run yarn hardhat deploy to run all our scripts.
+
+So let’s start with a deploy folder at the same folder hierarchy level as `contracts`, like so: `<<root>>/deploy`.
+
+### Deploy `NftMarketplace.sol`
+
+You can see the code below, but make sure your Hardhat config file (`hardhat.config.js`) has all the imports [specified in the repo](https://github.com/NexisNetwork/nft-marketplace-tutorial). Hardhat injects a bunch of these objects into the deploy scripts. Inside the `deploy` folder, create a script `01-deploy-nft-marketplace.js`. We use the `01-` prefix to number our scripts so they get executed by hardhat-deploy in lexicographic order.
+
+```js {{ title: '' }}
+const { network } = require('hardhat')
+const {
+  developmentChains,
+  VERIFICATION_BLOCK_CONFIRMATIONS,
+} = require('../helper-hardhat-config')
+const { verify } = require('../utils/verify')
+
+module.exports = async ({ getNamedAccounts, deployments }) => {
+  const { deploy, log } = deployments
+  const { deployer } = await getNamedAccounts()
+  const waitBlockConfirmations = developmentChains.includes(network.name)
+    ? 1
+    : VERIFICATION_BLOCK_CONFIRMATIONS
+
+  log('----------------------------------------------------')
+  const arguments = []
+  const nftMarketplace = await deploy('NftMarketplace', {
+    from: deployer,
+    args: arguments,
+    log: true,
+    waitConfirmations: waitBlockConfirmations,
+  })
+
+  // Verify the deployment
+  if (
+    !developmentChains.includes(network.name) &&
+    process.env.ETHERSCAN_API_KEY
+  ) {
+    log('Verifying...')
+    await verify(nftMarketplace.address, arguments)
+  }
+  log('----------------------------------------------------')
+}
+
+module.exports.tags = ['all', 'nftmarketplace']
+```
+
+So what’s going on here? First, we import the relevant objects and items we need. The imports from `helper-hardhat-config` and `utils/verify` will be explained in a moment.
+
+Then we export an asynchronous function that takes an object as an argument. This argument is the HRE ([Hardhat runtime environment](https://hardhat.org/advanced/hardhat-runtime-environment.html)), which is a collection of useful development tools that we need to access. The HRE is also enriched by plugins, including the hardhat-deploy plugin we discussed earlier.
+
+This async function does the following:
+
+- Accesses utility functions to deploy contracts and log to console.
+- Pulls out the deployer index from the `namedAccounts` property in the `hardhat.config.js` file. This will default to index 0, which is the `deployer`. That is the Hardhat wallet (account) that deploys the contract (the test wallet that Hardhat gives us). This utility property is added by the hardhat-deploy package. Refer to [this](https://github.com/wighawag/hardhat-deploy#hardhat-environment-extensions) and [this](https://github.com/wighawag/hardhat-deploy#configuration) for details.
+
+Using the `deploy()` function from the HRE, we deploy our smart contract to the Hardhat development chain locally, and pass in a configuration object that specifies who is deploying the contract, what arguments the contracts constructor takes, and other config data.
+
+You’ll also see that we import and use `developmentChains`. This is to run conditional logic, where some of the logic in this script is run depending on whether we’re on development chains, which in this case is either the `hardhat` or `localhost`. You’ll see these networks referred to in `hardhat.config.js`.
+
+In our project root directory we should create a file called `helper-hardhat-config.js` and export two pieces of data from it:
+
+```js {{ title: '' }}
+const developmentChains = ['hardhat', 'localhost']
+const VERIFICATION_BLOCK_CONFIRMATIONS = 6
+
+module.exports = { developmentChains, VERIFICATION_BLOCK_CONFIRMATIONS }
+```
+
+`VERIFICATION_BLOCK_CONFIRMATIONS` refers to the number of blocks that must be added to the blockchain before we assume that a transaction (including the creation of a new smart contract) is “confirmed”.
+
+If you look at our `01` script you’ll see that for development chains we only wait for one block to confirm. We only verify our smart contract on [Etherscan](https://etherscan.io/) if we are not on a local Hardhat chain (i.e. we’re on a testnet or mainnet) and we have an Etherscan API key (you can get this on the [free plan here](https://etherscan.io/apis), but we don’t need it for this blog as we’re running on a local Hardhat chain). To understand the implementation of the verify() utility, Check out Hardhat’s [documentation](https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html#using-programmatically).
+
+Though we don’t need to verify on the local network, I’ll still leave it in the scripts so you get a hang of it. So we import a `verify()` utility function, and we need to create it in order for our code to compile. We create `<<root>>/utils` folder and put `verify.js` in it. You can copy the code from [here](https://github.com/PatrickAlphaC/hardhat-nft-marketplace-fcc/blob/main/utils/verify.js).
+
+So really, the core focus of this script is to deploy our `NftMarketplace.sol` smart contract to the local Hardhat development network. If you run `yarn hardhat` you should see that the `deploy` task is listed. If not, you need to check that your `hardhat.config.js` file and your `deploy` folder are as specified in this blog and the reference repo.
+
+
+The “deploy” task correctly showing in the terminal.
+
+Then simply run the task with `yarn hardhat deploy`. If you get an “Unrecognized task deploy” error, that means the configuration for `hardhat-deploy` is not correct—the deploy task will not show up in the list of available tasks as shown above.
+
+But if everything is working as intended, then this should produce a message that says you’ve compiled and deployed the marketplace contract alongside a transaction hash and the Ethereum address of the deployed smart contract.
+
+NftMarketplace.sol successfully deployed. 
+
+In case you’re wondering why it says 14 Solidity files were compiled, that’s because the Open Zeppelin libraries we depend on also need to be compiled!
+
+### Deploy the NFT Contract(s)
+
+Next, we create the script `02-deploy-basic-nft.js`, which deploys the NFTs to our local development chain. You’ll notice that it looks quite familiar because both the function signature logic are the same as the NFT marketplace contract. The key difference is that we are deploying the sample NFT contracts and not the NFT marketplace contract, as the script name indicates.
+
+```js {{ title: '' }}
+const { network } = require("hardhat")
+const { developmentChains, VERIFICATION_BLOCK_CONFIRMATIONS } = require("../helper-hardhat-config")
+const { verify } = require("../utils/verify")
+
+module.exports = async ({ getNamedAccounts, deployments }) => {
+    const { deploy, log } = deployments
+    const { deployer } = await getNamedAccounts()
+    const waitBlockConfirmations = developmentChains.includes(network.name)
+        ? 1
+        : VERIFICATION_BLOCK_CONFIRMATIONS
+
+    log("----------------------------------------------------")
+    const args = []
+    const basicNft = await deploy("BasicNft", {
+        from: deployer,
+        args: args,
+        log: true,
+        waitConfirmations: waitBlockConfirmations,
+    })
+
+    const basicNftTwo = await deploy("BasicNftTwo", {
+        from: deployer,
+        args: args,
+        log: true,
+        waitConfirmations: waitBlockConfirmations,
+    })
+
+    // Verify the deployment
+    if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
+        log("Verifying...")
+        await verify(basicNft.address, args)
+        await verify(basicNftTwo.address, args)
+    }
+    log("----------------------------------------------------")
+}
+
+module.exports.tags = ["all", "basicnft"]
+```
+
+Now that you’re getting the hang of it, you know what to do next: We need to run `yarn hardhat deploy` to make sure that all our contracts deploy.
+
+
+
+Successfully run the “deploy” task to compile and deploy all smart contracts. {{className: 'text-center'}}
+
+When checking the reference repo, you’ll see that there is [a third script](https://github.com/PatrickAlphaC/hardhat-nft-marketplace-fcc/blob/main/deploy/03-update-front-end.js) in `<<root>>/deploy`.  We don’t need this right now. This script is used to copy over the ABI JSON files (after the compile step these JSON files show up in `<<root>>/artifacts/contracts/…`) into a separate directory that houses the repo for the frontend web app that presents a UI where we can begin interacting with our smart contracts. That’s out of the scope of this blog, so we don’t need to create this third script. Your `deploy` folder should only contain the two scripts we’ve covered in this blog.
+
+## A Standalone RPC Network
+
+Before we discuss interaction scripts, let’s recap. We have written two NFT contracts and an NFT marketplace smart contract, and we’ve used deploy scripts to deploy the contracts to our local Hardhat development chain. But how do we interact with these smart contracts and check that our marketplace smart contract correctly runs the operations we discussed at the start of this blog?
+
+This is where interaction scripts come in. Interaction scripts are similar to our deploy scripts in that they are written in JavaScript, but their purpose is to programmatically interact with our deployed smart contracts.  
+
+In order to interact with our deployed contracts, we need to work with a slightly different type of  Hardhat-provided local development chain. This time we work with the network called `localhost` which we specified in our `hardhat.config.js` file. We call this the “stand-alone network” (previously we were running the “in process” network). You can read about this in the Hardhat docs [here](https://hardhat.org/hardhat-network/#running-stand-alone-in-order-to-support-wallets-and-other-software). The Hardhat standalone network exposes a [JSON RPC](https://eth.wiki/json-rpc/API) endpoint on the localhost IP address 127.0.0.1 on port 8545.
+
+In your console, type `yarn hardhat` and take a look under the “AVAILABLE TASKS” heading.  You’ll see there is a task called `node` which “Starts a JSON-RPC server on top of Hardhat EVM.”  That’s the standalone `localhost` development chain.
+
+Fire it up by entering `yarn hardhat node`. You will get multiple console outputs that are worth studying. Scrolling to the top of the output it will look something like this:
+
+
+
+Firing up the standalone JSON-RPC local development blockchain. {{className: 'text-center'}}
+
+Note that the node task compiles and automatically deploys our contracts to this standalone dev chain. It also tells us that it “Started HTTP and WebSocket JSON-RPC server at http://127.0.0.1:8545/.”  
+
+Below that, it dumps out a bunch of wallet accounts and their private keys. Please read the warning here—these are development Ethereum accounts only and should never be used for actual transactions!
+
+The benefit of having a standalone RPC endpoint is that we can connect frontend web apps to our development network and its smart contracts. We can even connect wallet apps like Metamask to it.
+
+Now that we understand what’s going on with this standalone network, let’s kill that network with `ctrl+c`.  We will need to re-deploy our contracts every time we change our code anyway. We’ll also need to kill and restart this local development blockchain when our contracts get into a bad state so that we can start our NFT marketplace and token contracts with a fresh slate.
+
+## Interaction Scripts
+
+To interact with our contracts, we need to do the following:
+
+- Deploy the contracts using our deployer account (Hardhat test account with index 0).
+- Mint and list 3 NFTs with an “owner” account (Hardhat test account with index 1).
+- Buy NFT #0 with a buyer account (Hardhat test account with index 2).
+- Update NFT #1’s price and check the listing.
+- Cancel NFT #2 and check that it’s not longer listed.
+- Check that marketplace has correctly recorded the owner/seller’s proceeds from the sale of NFT #0 .
+
+These steps cover the main operations of our marketplace contract. The code in this section of the blog is a bit different from the reference repo, but you can find the interaction script code for this blog in [this gist](https://gist.github.com/zeuslawyer/032f61b04495ca00cfbe8d125fd4574c) with each script in its own file.
+
+### Minting and Listing Three NFTs
+
+To interact programmatically with our deployed contracts, we’ll use the [hardhat-ethers plugin](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html). This plugin wraps around the ethers.js library, which provides useful APIs to work with EVM chains.
+
+There are a couple of nuances to keep in mind here. You’ll recall from earlier in this blog that the owner of an NFT can approve another Ethereum address to manage and operate token-related operations such as token transfers. This means that after a user mints a token, they need to “approve” the marketplace so that the marketplace can transfer ownership when its buyItem() function gets called. You can read about ERC721’s `approve()` method [here](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721-approve-address-uint256-).
+
+Note in the code below that the owner mints a token, then approves the marketplace to operate it on behalf of the owner, and then the owner lists it on the marketplace. To do this, first create a new `<<root>>/scripts` folder in your project directory. Then create a new `mint-and-list-item.js` file and paste in the script below.
+
+```js {{ title: '' }}
+const { ethers } = require("hardhat")
+
+const PRICE = ethers.utils.parseEther("0.1")
+
+async function mintAndList() {
+  const accounts = await ethers.getSigners()
+  const [deployer, owner, buyer1] = accounts
+
+  const IDENTITIES = {
+      [deployer.address]: "DEPLOYER",
+      [owner.address]: "OWNER",
+      [buyer1.address]: "BUYER_1",
+  }
+
+  const nftMarketplaceContract = await ethers.getContract("NftMarketplace")
+  const basicNftContract = await ethers.getContract("BasicNft")
+
+  console.log(Minting NFT for ${owner.address})
+  const mintTx = await basicNftContract.connect(owner).mintNft()
+  const mintTxReceipt = await mintTx.wait(1)
+  const tokenId = mintTxReceipt.events[0].args.tokenId
+
+  console.log("Approving Marketplace as operator of NFT...")
+  const approvalTx = await basicNftContract
+      .connect(owner)
+      .approve(nftMarketplaceContract.address, tokenId)
+  await approvalTx.wait(1)
+
+  console.log("Listing NFT...")
+  const tx = await nftMarketplaceContract
+      .connect(owner)
+      .listItem(basicNftContract.address, tokenId, PRICE)
+  await tx.wait(1)
+  console.log("NFT Listed with token ID: ", tokenId.toString())
+
+  const mintedBy = await basicNftContract.ownerOf(tokenId)
+}
+
+mintAndList()
+  .then(() => process.exit(0))
+  .catch((error) => {
+      console.error(error)
+      process.exit(1)
+  })
+```
+Let’s break this down, because the same pattern will be repeated in the remaining scripts.
+
+First note that the async `mintAndList()` function gets called at the bottom, and if it errors, we print the error to console and then exit with a [non-zero error](https://www.gnu.org/software/bash/manual/html_node/Exit-Status.html). 
+
+In the function body, we get a list of the twenty Hardhat accounts using `getSigners()` and we use [JS destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment) assignment to access the first three address objects and give them variable names—`deployer` is the address that deployed the smart contract, `owner` mints and owns the NFT, and `buyer1` will buy it in the next script.
+
+We also create an `IDENTITIES` helper object which maps the addresses to their role. This makes debugging in the console easier.
+
+We then access the contracts and run the mint, approve, and list operations. We can confirm if the value of `mintedBy` is read from the marketplace smart contract and that the address is the same as the `owner`. When listing, we pass in the `PRICE` constant, which is 0.1 ethers denominated in wei. You’ll note that we used the ethers.js utility function `parseEther()` for this ([docs](https://docs.ethers.io/v5/api/utils/display-logic/#utils-parseEther)).
+
+Now before we run the script, we need to get ready to use our standalone Hardhat RPC local testnet. We will need to have two terminal windows open to do this. In the first one, type `yarn hardhat node`. This will fire up the standalone RPC network we discussed previously.
+
+In the second terminal window, type in y`arn hardhat run scripts/mint-and-list-item.js --network localhost`.  If you’ve done it right so far, you should see something like this:
+
+
+
+Successfully mint and list your NFT. {{className: 'text-center'}}
+
+If you’re curious to see how the local RPC server is logging your transactions, switch to the first terminal window and read the output there.
+
+That was token 0. We need to mint two more for the scripts that come later. Simply run the same mint-and-list script two more times to get up to token ID 2.
+
+### Buy a Token
+
+From our list of scripts above, you’ll remember that next we want to get one of the accounts to buy token ID 0. The structure of this second script will be identical to `mint-and-list`, but we will need to change the actual logic inside the script. Create a new `buy-item.js` script inside your `scripts` folder as shown below:
+
+```js {{ title: '' }}
+const { ethers } = require("hardhat")
+
+const TOKEN_ID = 0 // SET THIS BEFORE RUNNING SCRIPT
+
+async function buyItem() {
+    const accounts = await ethers.getSigners()
+    const [deployer, owner, buyer1] = accounts
+
+    const IDENTITIES = {
+        [deployer.address]: "DEPLOYER",
+        [owner.address]: "OWNER",
+        [buyer1.address]: "BUYER_1",
+    }
+
+    const nftMarketplaceContract = await ethers.getContract("NftMarketplace")
+    const basicNftContract = await ethers.getContract("BasicNft")
+
+    const listing = await nftMarketplaceContract
+       .getListing(basicNftContract.address, TOKEN_ID)
+
+    const price = listing.price.toString()
+    const tx = await nftMarketplaceContract
+        .connect(buyer1)
+        .buyItem(basicNftContract.address, TOKEN_ID, {
+            value: price,
+        })
+    await tx.wait(1)
+    console.log("NFT Bought!")
+
+    const newOwner = await basicNftContract.ownerOf(TOKEN_ID)
+}
+
+buyItem()
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error)
+        process.exit(1)
+    })
+```
+
+This is starting to look pretty familiar! The key difference here is that we use the ethers.js  `.connect(signer)` method to send a transaction from another account. In this case, we want to make sure that `buyer1` is the caller of the `buyItem()` method in the marketplace contract. Also note that we use the `getListing()` method to access the `Listing` details and retrieve the price, because that’s how much we need to pay in `buyItem()`. Finally, we check that the new owner of the token is actually the `buyer` by reading that data directly from the NFT contract’s state.
+
+Run `yarn hardhat run scripts/buy-item --network localhost` and you should see something like this:
+
+
+Successfully buy a listed NFT. {{className: 'text-center'}}
+
+### Update a Token’s Price
+
+Now that we have sold Token 0, it’s no longer listed on the marketplace. The next step is to update the price of token ID 1, which was minted and listed at the start. You’ll see the pattern repeating here, so create the `update-listing` script and paste the correct code [from this gist](https://gist.github.com/zeuslawyer/032f61b04495ca00cfbe8d125fd4574c). If you run `yarn hardhat run scripts/update-listing --network localhost` and have set the right `TOKEN_ID`, then you should see logs like the one below that show that the price has been updated:
+
+
+
+Successfully update the price of a listed NFT. {{className: 'text-center'}}
+
+### The Remaining Two Operations
+
+All that’s left is to write two scripts—one to cancel a Listing and another to let the owner/seller know what their proceeds are from their token sale. Again, check the gists for the code and you should get logs in your console that look like the following when you run `scripts/cancel-item.js`:
+
+
+Cancel the listing of an NFT. {{className: 'text-center'}}
+
+To see how much the owner of the NFTs got from the sale of their token, we run `get-seller-proceeds.js`, which should produce the following:
+
+
+
+Check a seller’s proceeds stored in the marketplace smart contract. {{className: 'text-center'}}
+
+Note that the seller’s proceeds, stored in the marketplace contract’s `s_proceeds` mapping, are denominated in wei. To convert this back to a more readable ETH amount, we use the ether.js utility function `.formatEther()` ([docs](https://docs.ethers.io/v5/api/utils/display-logic/#utils-formatEther)).
+
+## Wrapping Up
+
+It’s always a good idea to run automated tests on your code. This reference repo has a suite of tests that you can refer to that use [Hardhat tools](https://hardhat.org/tutorial/testing-contracts.html) that leverage Mocha and Waffle utilities. The tests also check for the `revert()`, function modifier, and exception handling behavior that we expect. They’re incredibly useful for understanding the edge cases to look out for, so make sure to check them out.
+
+If you want to build a frontend that interacts with the NFTMarketplace smart contract, take a look at this [video from the Chainlink Spring 2022 Hackathon.](https://www.youtube.com/watch?v=l4r0IXjAlpc) Building a frontend would be a fun challenge and give you all the skills you need to sell an NFT collection on your own NFT marketplace!

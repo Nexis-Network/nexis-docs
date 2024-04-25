@@ -77,7 +77,7 @@ module.exports = {
             },
             {
               label: "Running a Validator",
-              to: "operations",
+              to: "architecture",
             },
             {
               label: "Command Line",
