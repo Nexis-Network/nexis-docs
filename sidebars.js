@@ -16,9 +16,7 @@ module.exports = {
         'indexx',
         'industry_use_cases',
         'integrating',
-        'nft_tutorials',
         'performance_reports',
-       
         'setup_metamask_mainnet',
         'setup_metamask_testnet',
      
