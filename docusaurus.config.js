@@ -14,6 +14,10 @@ module.exports = {
     prism: {
       additionalLanguages: ["rust"],
     },
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: true,
+    },
     navbar: {
       logo: {
         alt: "Nexis Network Logo",
@@ -158,5 +162,11 @@ module.exports = {
         // },
       },
     ],
+  ],
+  scripts: [
+    {
+      src: '/js/theme.js',
+      async: true,
+    },
   ],
 };
