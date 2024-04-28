@@ -19,9 +19,6 @@ module.exports = {
         'performance_reports',
         'setup_metamask_mainnet',
         'setup_metamask_testnet',
-     
-        
-      
         'solidity_tutorials',
         'staking',
         'validating',
@@ -97,7 +94,6 @@ module.exports = {
           ],
         },
       ]
-    },
-   
+    }, 
   ],
 };
