@@ -142,7 +142,7 @@ A transaction includes a recent blockhash to prevent duplication and to give tra
 
 Nexis Network nodes accept HTTP requests using the [JSON-RPC 2.0](https://www.jsonrpc.org/specification) specification.
 
-To interact with a Nexis Network node inside a JavaScript application, use the [solana-web3.js](https://github.com/solana-labs/solana-web3.js) library, which gives a convenient interface for the RPC methods.
+To interact with a Nexis Network node inside a JavaScript application, use the [nexis-web3.js](https://github.com/nexis-labs/nexis-web3.js) library, which gives a convenient interface for the RPC methods.
 
 ## RPC HTTP Endpoint
 
@@ -451,7 +451,7 @@ The result field will be an object with the following fields:
   - `transactions: <array>` - an array of JSON objects containing:
     - `transaction: <object|[string,encoding]>` - [Transaction](https://docs.nexis.com/apps/jsonrpc-api#transaction-structure) object, either in JSON format or encoded binary data, depending on encoding parameter
     - `meta: <object>` - transaction status metadata object, containing `null` or:
-      - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+      - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/nexis-labs/nexis/blob/master/sdk/src/transaction.rs#L14)
       - `fee: <u64>` - fee this transaction was charged, as u64 integer
       - `preBalances: <array>` - array of u64 account balances from before the transaction was processed
       - `postBalances: <array>` - array of u64 account balances after the transaction was processed
@@ -594,7 +594,7 @@ The result field will be an array of transaction signature information, ordered 
 - `<object>`
   - `signature: <string>` - transaction signature as base-58 encoded string
   - `slot: <u64>` - The slot that contains the block with the transaction
-  - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+  - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/nexis-labs/nexis/blob/master/sdk/src/transaction.rs#L14)
   - `memo: <string |null>` - Memo associated with the transaction, null if no memo is present
 
 ### Example
@@ -623,7 +623,7 @@ Returns transaction details for a confirmed transaction
   - `slot: <u64>` - the slot this transaction was processed in
   - `transaction: <object|[string,encoding]>` - [Transaction](https://docs.nexis.com/apps/jsonrpc-api#transaction-structure) object, either in JSON format or encoded binary data, depending on encoding parameter
   - `meta: <object | null>` - transaction status metadata object:
-    - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+    - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/nexis-labs/nexis/blob/master/sdk/src/transaction.rs#L14)
     - `fee: <u64>` - fee this transaction was charged, as u64 integer
     - `preBalances: <array>` - array of u64 account balances from before the transaction was processed
     - `postBalances: <array>` - array of u64 account balances after the transaction was processed
@@ -1385,7 +1385,7 @@ An array of:
 - `<object>`
   - `slot: <u64>` - The slot the transaction was processed
   - `confirmations: <usize | null>` - Number of blocks since signature confirmation, null if rooted, as well as finalized by a supermajority of the cluster
-  - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+  - `err: <object | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/nexis-labs/nexis/blob/master/sdk/src/transaction.rs#L14)
   - DEPRECATED: `status: <object>` - Transaction status
     - `"Ok": <null>` - Transaction was successful
     - `"Err": <ERR>` - Transaction failed with TransactionError
@@ -1919,7 +1919,7 @@ None
 
 The result field will be a JSON object with the following fields:
 
-- `solana-core`, software version of solana-core
+- `nexis-core`, software version of nexis-core
 
 ### Example
 
@@ -1927,7 +1927,7 @@ The result field will be a JSON object with the following fields:
 // Request
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getVersion"}' http://localhost:8899
 // Result
-{"jsonrpc":"2.0","result":{"solana-core": "1.4.0"},"id":1}
+{"jsonrpc":"2.0","result":{"nexis-core": "1.4.0"},"id":1}
 ```
 
 ## getVoteAccounts
@@ -2051,7 +2051,7 @@ Simulate sending a transaction
 
 An RpcResponse containing a TransactionStatus object The result will be an RpcResponse JSON object with `value` set to a JSON object with the following fields:
 
-- `err: <object | string | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/solana-labs/solana/blob/master/sdk/src/transaction.rs#L14)
+- `err: <object | string | null>` - Error if transaction failed, null if transaction succeeded. [TransactionError definitions](https://github.com/nexis-labs/nexis/blob/master/sdk/src/transaction.rs#L14)
 - `logs: <array | null>` - Array of log messages the transaction instructions output during execution, null if simulation failed before the transaction was able to execute (for example due to an invalid blockhash or signature verification failure)
 
 ### Example
@@ -2719,18 +2719,18 @@ Example scripts for the web3.js repo and native programs:
 
 - [Web3 Examples](https://nexis.github.io/web3.js/examples)
 
-Example scripts for the Solana Program Library:
+Example scripts for the Nexis Program Library:
 
-- [Token Program Examples](https://github.com/solana-labs/solana-program-library/tree/master/token/js/examples)
+- [Token Program Examples](https://github.com/nexis-labs/nexis-program-library/tree/master/token/js/examples)
 
 ## Flow
 
-A [Flow library definition](https://flow.org/en/docs/libdefs/) is provided at https://unpkg.com/@solana/web3.js@latest/module.flow.js. Download the file and add the following line under the [libs] section of your project’s `.flowconfig` to activate it: {{className: 'break-words'}}
+A [Flow library definition](https://flow.org/en/docs/libdefs/) is provided at https://unpkg.com/@nexis/web3.js@latest/module.flow.js. Download the file and add the following line under the [libs] section of your project’s `.flowconfig` to activate it: {{className: 'break-words'}}
 
 ```bash {{ title: 'Example' }}
 [libs]
 
-node_modules/@solana/web3.js/module.flow.js
+node_modules/@nexis/web3.js/module.flow.js
 ```
 
 ## Releases
@@ -2741,11 +2741,11 @@ Each Github release features a tarball containing API documentation and a minifi
 
 ## Disclaimer
 
-All claims, content, designs, algorithms, estimates, roadmaps, specifications, and performance measurements described in this project are done with the Solana Foundation’s (“SF”) best efforts. It is up to the reader to check and validate their accuracy and truthfulness. Furthermore nothing in this project constitutes a solicitation for investment.
+All claims, content, designs, algorithms, estimates, roadmaps, specifications, and performance measurements described in this project are done with the Nexis Foundation’s (“SF”) best efforts. It is up to the reader to check and validate their accuracy and truthfulness. Furthermore nothing in this project constitutes a solicitation for investment.
 
-Any content produced by SF or developer resources that SF provides, are for educational and inspiration purposes only. SF does not encourage, induce or sanction the deployment, integration or use of any such applications (including the code comprising the Solana blockchain protocol) in violation of applicable laws or regulations and hereby prohibits any such deployment, integration or use. This includes use of any such applications by the reader (a) in violation of export control or sanctions laws of the United States or any other applicable jurisdiction, (b) if the reader is located in or ordinarily resident in a country or territory subject to comprehensive sanctions administered by the U.S. Office of Foreign Assets Control (OFAC), or (c) if the reader is or is working on behalf of a Specially Designated National (SDN) or a person subject to similar blocking or denied party prohibitions.
+Any content produced by SF or developer resources that SF provides, are for educational and inspiration purposes only. SF does not encourage, induce or sanction the deployment, integration or use of any such applications (including the code comprising the Nexis blockchain protocol) in violation of applicable laws or regulations and hereby prohibits any such deployment, integration or use. This includes use of any such applications by the reader (a) in violation of export control or sanctions laws of the United States or any other applicable jurisdiction, (b) if the reader is located in or ordinarily resident in a country or territory subject to comprehensive sanctions administered by the U.S. Office of Foreign Assets Control (OFAC), or (c) if the reader is or is working on behalf of a Specially Designated National (SDN) or a person subject to similar blocking or denied party prohibitions.
 
-The reader should be aware that U.S. export control and sanctions laws prohibit U.S. persons (and other persons that are subject to such laws) from transacting with persons in certain countries and territories or that are on the SDN list. As a project based primarily on open-source software, it is possible that such sanctioned persons may nevertheless bypass prohibitions, obtain the code comprising the Solana blockchain protocol (or other project code or applications) and deploy, integrate, or otherwise use it. Accordingly, there is a risk to individuals that other persons using the Solana blockchain protocol may be sanctioned persons and that transactions with such persons would be a violation of U.S. export controls and sanctions law. This risk applies to individuals, organizations, and other ecosystem participants that deploy, integrate, or use the Solana blockchain protocol code directly (e.g., as a node operator), and individuals that transact on the Solana blockchain through light clients, third party interfaces, and/or wallet software.
+The reader should be aware that U.S. export control and sanctions laws prohibit U.S. persons (and other persons that are subject to such laws) from transacting with persons in certain countries and territories or that are on the SDN list. As a project based primarily on open-source software, it is possible that such sanctioned persons may nevertheless bypass prohibitions, obtain the code comprising the Nexis blockchain protocol (or other project code or applications) and deploy, integrate, or otherwise use it. Accordingly, there is a risk to individuals that other persons using the Nexis blockchain protocol may be sanctioned persons and that transactions with such persons would be a violation of U.S. export controls and sanctions law. This risk applies to individuals, organizations, and other ecosystem participants that deploy, integrate, or use the Nexis blockchain protocol code directly (e.g., as a node operator), and individuals that transact on the Nexis blockchain through light clients, third party interfaces, and/or wallet software.
 
 ## Rust API
 
@@ -2855,7 +2855,7 @@ The operation will have to take place after (at least partial) deserialization, 
 
 ## Sysvar Cluster Data
 
-Nexis Network exposes a variety of cluster state data to programs via sysvar accounts. These accounts are populated at known addresses published along with the account layouts in the `solana-program` crate, and outlined below.
+Nexis Network exposes a variety of cluster state data to programs via sysvar accounts. These accounts are populated at known addresses published along with the account layouts in the `nexis-program` crate, and outlined below.
 
 To include sysvar data in program operations, pass the sysvar account address in the list of accounts in a transaction. The account can be read in your instruction processor like any other account. Access to sysvars accounts is always readonly.
 
@@ -3105,7 +3105,7 @@ Then when other programs include this program as a dependency, they should do so
 
 ## Project Dependencies
 
-At a minimum, Nexis Network Rust programs must pull in the solana-program crate.
+At a minimum, Nexis Network Rust programs must pull in the nexis-program crate.
 
 Nexis Network BPF programs have some restrictions that may prevent the inclusion of some crates as dependencies or require special handling.
 
@@ -3349,7 +3349,7 @@ The `makefile` should contain the following:
 
 ```bash {{ title: '' }}
 OUT_DIR := <path to place to resulting shared object>
-include ~/.local/share/solana/install/active_release/bin/sdk/bpf/c/bpf.mk
+include ~/.local/share/nexis/install/active_release/bin/sdk/bpf/c/bpf.mk
 ```
 
 The bpf-sdk may not be in the exact place specified above but if you setup your environment per How to Build then it should be.
@@ -3487,7 +3487,7 @@ For information about how to log from a program see the language specific docume
 
 When running a local cluster the logs are written to stdout as long as they are enabled via the `RUST_LOG` log mask. From the perspective of program development it is helpful to focus on just the runtime and program logs and not the rest of the cluster logs. To focus in on program specific information the following log mask is recommended:
 
-`export RUST_LOG=solana_runtime::system_instruction_processor=trace,solana_runtime::message_processor=info,solana_bpf_loader=debug,solana_rbpf=debug` {{className: 'break-words'}}
+`export RUST_LOG=nexis_runtime::system_instruction_processor=trace,nexis_runtime::message_processor=info,nexis_bpf_loader=debug,nexis_rbpf=debug` {{className: 'break-words'}}
 
 Log messages coming directly from the program (not the runtime) will be displayed in the form: 
 
@@ -3554,7 +3554,7 @@ The project comprises of:
 First fetch the latest version of the example code:
 
 ```bash {{ title: '' }}
-$ git clone https://github.com/solana-labs/example-helloworld.git
+$ git clone https://github.com/nexis-labs/example-helloworld.git
 $ cd example-helloworld
 ```
 
@@ -3573,7 +3573,7 @@ Break can be played on our Devnet, Testnet and Mainnet Beta networks. Plays are 
 First fetch the latest version of the example code:
 
 ```bash {{ title: '' }}
-$ git clone https://github.com/solana-labs/break.git
+$ git clone https://github.com/nexis-labs/break.git
 $ cd break
 ```
 
@@ -3586,7 +3586,7 @@ Next, follow the steps in the git repository's README.
 First fetch the example code:
 
 ```text {{ title: '' }}
-$ git clone https://github.com/solana-labs/example-webwallet.git
+$ git clone https://github.com/nexis-labs/example-webwallet.git
 $ cd example-webwallet
 $ TAG=$(git describe --tags $(git rev-list --tags
 --max-count=1))

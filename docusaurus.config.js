@@ -4,7 +4,7 @@ module.exports = {
   title: "Nexis Network Docs",
   tagline:
     "Nexis Network is an open source project implementing a new, high-performance, permissionless blockchain.",
-  url: "https://docs.solanalabs.com",
+  url: "https://docs.nexislabs.com",
   baseUrl: "/",
   favicon: "img/favicon.ico",
   organizationName: "nexis-labs", // Usually your GitHub org/user name.

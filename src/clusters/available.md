@@ -129,7 +129,7 @@ The identities of the
 
 A permissionless, persistent cluster for Nexis Network users, builders, validators and token holders.
 
-- Tokens that are issued on Mainnet Beta are **real** SOL
+- Tokens that are issued on Mainnet Beta are **real** NZT
 - Gossip entrypoint for Mainnet Beta: `entrypoint.mainnet-beta.nexis.com:8001`
 - Metrics environment variable for Mainnet Beta:
 

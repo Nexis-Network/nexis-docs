@@ -39,7 +39,7 @@ The build script generates static content into the `build` directory and can be 
 ./build.sh
 ```
 
-Running this build script requires **Docker**, and will auto fetch the [solanalabs/rust](https://hub.docker.com/r/solanalabs/rust) image from Docker hub to compile the desired version of the [Nexis Network CLI](https://docs.solanalabs.com/cli) from source.
+Running this build script requires **Docker**, and will auto fetch the [nexislabs/rust](https://hub.docker.com/r/nexislabs/rust) image from Docker hub to compile the desired version of the [Nexis Network CLI](https://docs.nexislabs.com/cli) from source.
 
 This build script will also:
 
@@ -84,7 +84,7 @@ npm run crowdin:upload
 ```
 
 > Translations are only included when deploying the `STABLE` channel of the docs
-> (via `build.sh`). Resulting in only the `docs.solanalabs.com` documentation
+> (via `build.sh`). Resulting in only the `docs.nexislabs.com` documentation
 > site to include translated content. Therefore, the `edge` and `beta` docs
 > sites are not expected to include translated content, even though the language
 > selector will still be present.
@@ -121,9 +121,9 @@ The docs are built and published in Travis CI with the `./build.sh` script. On e
 
 In each post-commit build, docs are built and published using `vercel` to their respective domain depending on the build branch.
 
-- Master branch docs are published to `edge.docs.solanalabs.com`
-- Beta branch docs are published to `beta.docs.solanalabs.com`
-- Latest release tag docs are published to `docs.solanalabs.com`
+- Master branch docs are published to `edge.docs.nexislabs.com`
+- Beta branch docs are published to `beta.docs.nexislabs.com`
+- Latest release tag docs are published to `docs.nexislabs.com`
 
 ## Common Issues
 

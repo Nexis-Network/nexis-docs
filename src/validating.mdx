@@ -118,7 +118,7 @@ nexis-gossip spy --entrypoint bootstrap.testnet.nexscan.io:8001
 
 If your machine has a GPU with CUDA installed (Linux-only currently), include the `--cuda` argument to nexis-network`-validator`.
 
-When your validator is started look for the following log message to indicate that CUDA is enabled: `"[<timestamp> solana::validator] CUDA is enabled"`
+When your validator is started look for the following log message to indicate that CUDA is enabled: `"[<timestamp> nexis::validator] CUDA is enabled"`
 
 ## System Tuning
 
@@ -128,12 +128,12 @@ When your validator is started look for the following log message to indicate th
 
 The Nexis Network repo includes a daemon to adjust system settings to optimize performance (namely by increasing the OS UDP buffer limits, and scheduling PoH with realtime policy).
 
-The daemon (`solana-sys-tuner`) is included in the Nexis Network binary release. Restart it, before restarting your validator, after each software upgrade to ensure that the latest recommended settings are applied.
+The daemon (`nexis-sys-tuner`) is included in the Nexis Network binary release. Restart it, before restarting your validator, after each software upgrade to ensure that the latest recommended settings are applied.
 
 To run it:
 
 ```bash {{ title: '' }}
-sudo solana-sys-tuner --user $(whoami) > sys-tuner.log 2>&1 &
+sudo nexis-sys-tuner --user $(whoami) > sys-tuner.log 2>&1 &
 ```
 
 ### Manual
@@ -143,7 +143,7 @@ If you would prefer to manage system settings on your own, you may do so with th
 ### Increase UDP buffers
 
 ```bash {{ title: '' }}
-sudo bash -c "cat >/etc/sysctl.d/20-solana-udp-buffers.conf <<EOF
+sudo bash -c "cat >/etc/sysctl.d/20-nexis-udp-buffers.conf <<EOF
 # Increase UDP buffer size
 net.core.rmem_default = 134217728
 net.core.rmem_max = 134217728
@@ -153,20 +153,20 @@ EOF"
 ```
 
 ```bash {{ title: '' }}
-sudo sysctl -p /etc/sysctl.d/20-solana-udp-buffers.conf
+sudo sysctl -p /etc/sysctl.d/20-nexis-udp-buffers.conf
 ```
 
 ### Increased memory mapped files limit
 
 ```bash {{ title: '' }}
-sudo bash -c "cat >/etc/sysctl.d/20-solana-mmaps.conf <<EOF
+sudo bash -c "cat >/etc/sysctl.d/20-nexis-mmaps.conf <<EOF
 # Increase memory mapped files limit
 vm.max_map_count = 500000
 EOF"
 ```
 
 ```bash {{ title: '' }}
-sudo sysctl -p /etc/sysctl.d/20-solana-mmaps.conf
+sudo sysctl -p /etc/sysctl.d/20-nexis-mmaps.conf
 ```
 
 ### Add
@@ -182,7 +182,7 @@ sudo systemctl daemon-reload
 ```
 
 ```bash {{ title: '' }}
-sudo bash -c "cat >/etc/security/limits.d/90-solana-nofiles.conf <<EOF
+sudo bash -c "cat >/etc/security/limits.d/90-nexis-nofiles.conf <<EOF
 # Increase process file descriptor count limit
 * - nofile 500000
 EOF"
@@ -390,7 +390,7 @@ Stakes need to warm up, and warmup increments are applied at Epoch boundaries, s
 To monitor your validator during its warmup period:
 
 - View your vote account:`nexis vote-account ~/vote-account-keypair.json` This displays the current state of all the votes the validator has submitted to the network.
-- View your stake account, the delegation preference and details of your stake:`solana stake-account ~/validator-stake-keypair.json`
+- View your stake account, the delegation preference and details of your stake:`nexis stake-account ~/validator-stake-keypair.json`
 - `nexis validators` displays the current active stake of all validators, including yours
 - `nexis stake-history` shows the history of stake warming up and cooling down over recent epochs
 - Look for log messages on your validator indicating your next leader slot: `[2019-09-27T20:16:00.319721164Z INFO nexis-network_core::replay_stage] <VALIDATOR_IDENTITY_PUBKEY> voted and reset PoH at tick height ####. My next leader slot is ####`
