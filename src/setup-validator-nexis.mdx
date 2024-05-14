@@ -1,0 +1,365 @@
+---
+title: Setup a Nexis Network Validator
+sidebar_label: Nexis Validator Guide
+sidebar_position: 2
+---
+
+This is a guide for getting your validator setup on the Nexis Network testnet cluster
+for the first time. Testnet is a Nexis Network cluster that is used for performance
+testing of the software before the software is used on mainnet. Since testnet is
+stress tested daily, it is a good cluster to practice validator operations.
+
+## Open The Terminal Program
+
+We recommend using Ubuntu 20 LTS for setting up a validator, Once you are on the system, it can either be an EC2 instance on AWS or a local system or any other server, just make sure you have enough permissions to run all commands. 
+
+Apart from the hardware requirements, you will need Nexis CLI tool & to install that, follow the next steps and if you already have that installed please move to the next section.
+
+1. Open your terminal and run the following command to install rust
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+2. Download the source code of nexis network
+
+```
+git clone https://github.com/nexis-network/nexis-network.git
+cd nexis-network
+```
+
+3. Build from source by running the following command
+
+```
+cargo build --all
+```
+
+4. Check if nexis cli is installed on your system
+
+```
+./target/release/nexis --version
+```
+
+The output should be like this `nexis-cli 0.7.0 (src:devbuild; feat:3414107864)`
+
+Now add the Nexis CLI binary in path of .rc file of your system or if you are not much used to terminal , just run following command
+
+```
+export PATH="/Users/anukul/Desktop/playground/nexis/nexis-network"/bin:"$PATH"
+```
+
+5. Cross check if nexis cli is available or not
+
+```
+nexis --version
+```
+
+In case it is not executing , just go to `/target/release` directory and access the binaries from there using the following
+
+Instead of writing `nexis` write `./target/release/nexis`
+
+It should work fine :)
+
+## Setup Nexis CLI config
+
+As we mentioned earlier that we will be running the node on testnet, you will need to set the network of cli to testnet, you can do it by running the following command
+
+```
+nexis config set --url https://api.testnet.nexis.com
+```
+
+you can check the nexis config by running the following command
+
+```
+nexis config get
+```
+
+You should see a line that says: RPC URL: `https://api.testnet.nexis.com`
+
+## Create Keys
+
+Create the 3 keypairs that you will need to run your
+validator .
+
+```
+nexis-keygen new -o validator-keypair.json
+```
+
+```
+nexis-keygen new -o vote-account-keypair.json
+```
+
+```
+nexis-keygen new -o authorized-withdrawer-keypair.json
+```
+
+> **IMPORTANT** the `authorized-withdrawer-keypair.json` should be considered
+> very sensitive information. Many operators choose to use a multisig, hardware
+> wallet, or paper wallet for the authorized withdrawer keypair. A keypair is
+> created on disk in this example for simplicity. Additionally, the withdrawer
+> keypair should always be stored safely. The authorized withdrawer keypair
+> should **never** be stored on the remote machine that the validator software
+> runs on.
+
+## Create a Vote Account
+
+Before you can create your vote account, you need to configure the Nexis Network
+command line tool a bit more.
+
+The below command sets the default keypair that the Nexis Network CLI uses to the
+`validator-keypair.json` file that you just created in the terminal:
+
+```
+nexis config set --keypair ./validator-keypair.json
+```
+
+Now verify your account balance of `0`:
+
+```
+nexis balance
+```
+
+Next, you need to deposit some NZT into that keypair account in order create a
+transaction (in this case, making your vote account):
+
+As we are on testnet, you can claim some `free` NZT tokens using the airdrop functionality of nexis cli
+
+```
+nexis airdrop 1
+```
+
+> **NOTE** The `airdrop` sub command does not work on mainnet, so you will have
+> to acquire NZT and transfer it into this keypair's account if you are setting
+> up a mainnet validator.
+
+Now, use the Nexis Network cluster to create a vote account.
+
+As a reminder, all commands mentioned so far **should be done on your trusted
+computer** and **NOT** on a server where you intend to run your validator. It is
+especially important that the following command is done on a **trusted
+computer**:
+
+```
+nexis create-vote-account -ut \
+    --fee-payer ./validator-keypair.json \
+    ./vote-account-keypair.json \
+    ./validator-keypair.json \
+    ./authorized-withdrawer-keypair.json
+```
+
+> Note `-ut` tells the cli command that we would like to use the testnet
+> cluster. `--fee-payer` specifies the keypair that will be used to pay the
+> transaction fees. Both flags are not necessary if you configured the nexis
+> cli properly above but they are useful to ensure you're using the intended
+> cluster and keypair.
+
+## Save the Withdrawer Keypair Securely
+
+Make sure your `authorized-withdrawer-keypair.json` is stored in a safe place.
+If you have chosen to create a keypair on disk, you should first backup the
+keypair and then delete it from your local machine.
+
+**IMPORTANT**: If you lose your withdrawer key pair, you will lose control of
+your vote account. You will not be able to withdraw tokens from the vote account
+or update the withdrawer. Make sure to store the
+`authorized-withdrawer-keypair.json` securely before you move on.
+
+## System Tuning
+
+### Linux
+
+Your system will need to be tuned in order to run properly. Your validator may
+not start without the settings below.
+
+#### **Optimize sysctl knobs**
+
+```bash
+sudo bash -c "cat >/etc/sysctl.d/21-solana-validator.conf <<EOF
+# Increase UDP buffer sizes
+net.core.rmem_default = 134217728
+net.core.rmem_max = 134217728
+net.core.wmem_default = 134217728
+net.core.wmem_max = 134217728
+
+# Increase memory mapped files limit
+vm.max_map_count = 1000000
+
+# Increase number of allowed open file descriptors
+fs.nr_open = 1000000
+EOF"
+```
+
+```bash
+sudo sysctl -p /etc/sysctl.d/21-solana-validator.conf
+```
+
+#### **Increase systemd and session file limits**
+
+Add
+
+```
+LimitNOFILE=1000000
+```
+
+to the `[Service]` section of your systemd service file, if you use one,
+otherwise add
+
+```
+DefaultLimitNOFILE=1000000
+```
+
+to the `[Manager]` section of `/etc/systemd/system.conf`.
+
+```bash
+sudo systemctl daemon-reload
+```
+
+```bash
+sudo bash -c "cat >/etc/security/limits.d/90-solana-nofiles.conf <<EOF
+# Increase process file descriptor count limit
+* - nofile 1000000
+EOF"
+```
+
+```bash
+### Close all open sessions (log out then, in again) ###
+```
+
+## Start the validator
+
+Now its time to do the task for which you were reading till here! Spinning up the validator. 
+
+Run the following command
+
+```
+nexis-validator \
+    --identity validator-keypair.json \
+    --vote-account vote-account-keypair.json \
+    --known-validator Bbg2muexVXbVKjZueXS9dWpx2jMG47jUKajL5ok5PqN9 \
+    --only-known-rpc \
+    --log ./nexis-validator.log \
+    --ledger ./ledger \
+    --rpc-port 8899 \
+    --dynamic-port-range 8000-8020 \
+    --entrypoint bootstrap.testnet.nexis.network:8001 \
+    --expected-genesis-hash 7j9FxERWnNpyHKYdvyqb2CAvVR8jKQBL1P3ZHDcDAQmF \
+    --wal-recovery-mode skip_any_corrupted_record \
+    --limit-ledger-size
+```
+
+Refer to `nexis-validator --help` for more information on what each flag is
+doing in this script.
+
+### Tailing The Logs
+
+As a spot check, you will want to make sure your validator is producing
+reasonable log output (**warning**, there will be a lot of log output).
+
+In a new terminal window, ssh into your validator machine, switch users to the
+`sol` user and `tail` the logs:
+
+```
+su - sol
+tail -f nexis-validator.log
+```
+
+The `tail` command will continue to display the output of a file as the file
+changes. You should see a continuous stream of log output as your validator
+runs. Keep an eye out for any lines that say `_ERROR_`.
+
+Assuming you do not see any error messages, exit out of the command.
+
+### Gossip Protocol
+
+Gossip is a protocol used in the Nexis Network clusters to communicate between
+validator nodes. For more information on gossip, see
+[Gossip Service](../validator/gossip.md). To verify that your validator is
+running properly, make sure that the validator has registered itself with the
+gossip network.
+
+In a new terminal window, connect to your server via ssh. Identify your
+validator's pubkey:
+
+```
+nexis-keygen pubkey ~/validator-keypair.json
+```
+
+The command `nexis gossip` lists all validators that have registered with the
+protocol. To check that the newly setup validator is in gossip, we will `grep`
+for our pubkey in the output:
+
+```
+nexis gossip | grep <pubkey>
+```
+
+After running the command, you should see a single line that looks like this:
+
+```
+139.178.68.207  | Bbg2muexVXbVKjZueXS9dWpx2jMG47jUKajL5ok5PqN9 | 8001   | 8004  | 139.178.68.207:80     | 1.14.17 | 3488713414
+```
+
+If you do not see any output after grep-ing the output of gossip, your validator
+may be having startup problems. If that is the case, start debugging by looking
+through the validator log output.
+
+### Nexis Network Validators
+
+After you have verified that your validator is in gossip, you can verify that
+your validator has joined the network using the `nexis validators` command. The
+command lists all validators in the network, but like before, we can `grep` the
+output for the validator we care about:
+
+```
+nexis validators | grep <pubkey>
+```
+
+You should see a line of output that looks like this:
+
+```
+5D1fNXzvv5NjV1ysLjirC4WY92RNsVH18vjmcszZd8on  FX6NNbS5GHc2kuzgTZetup6GZX6ReaWyki8Z8jC7rbNG  100%  197434166 (  0)  197434133 (  0)   2.11%   323614  1.14.17   2450110.588302720 NZT (1.74%)
+```
+
+### Nexis Network Catchup
+
+The `nexis catchup` command is a useful tool for seeing how quickly your
+validator is processing blocks. The Nexis Network network has the capability to produce
+many transactions per second. Since your validator is new to the network, it has
+to ask another validator (listed as a `--known-validator` in your startup
+script) for a recent snapshot of the ledger. By the time you receive the
+snapshot, you may already be behind the network. Many transactions may have been
+processed and finalized in that time. In order for your validator to participate
+in consensus, it must _catchup_ to the rest of the network by asking for the
+more recent transactions that it does not have.
+
+The `nexis catchup` command is a tool that tells you how far behind the network
+your validator is and how quickly you are catching up:
+
+```
+nexis catchup <pubkey>
+```
+
+If you see a message about trying to connect, your validator may not be part of
+the network yet. Make sure to check the logs and double check `nexis gossip`
+and `nexis validators` to make sure your validator is running properly.
+
+Once you are happy that the validator can start up without errors, the next step
+is to create a system service to run the `validator.sh` file automatically. Stop
+the currently running validator by pressing `CTRL+C` in the window where
+`validator.sh` is running.
+
+## Monitoring
+
+`nexis-watchtower` is a command you can run on a separate machine to monitor
+your server. You can read more about handling
+[automatic restarts and monitoring](./best-practices/monitoring.md#nexis-watchtower)
+using Nexis Network Watchtower here in the docs.
+
+## Common issues
+
+### Out of disk space
+
+Make sure your ledger is on drive with at least `2TB` of space.
+
+### Validator not catching up
+
+This could be a networking/hardware issue, or you may need to get the latest snapshot from another validator node.
