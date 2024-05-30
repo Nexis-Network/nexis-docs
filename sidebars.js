@@ -1,7 +1,8 @@
 module.exports = {
   masterSidebar: [
     "home",
-    "setup-validator-nexis",
+    // "setup-validator-nexis",
+    "setup-val",
     {
       type:"category",
       label:"Infrastructure",

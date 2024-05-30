@@ -1,0 +1,201 @@
+---
+title: Setup a Nexis Network Validator
+sidebar_label: Nexis Validator Guide
+sidebar_position: 2
+---
+
+Follow this guide to setup Nexis Validator on Devnet
+
+## Setup Nexis CLI
+
+Nexis CLI is a powerful tool that allows you to interact with the Nexis Native Chain directly from your terminal. As a developer, setting it up locally is essential. Here's a step-by-step guide to get you started:
+
+1. **Update and Install Dependencies:**
+
+```bash
+sudo apt-get update
+sudo apt-get install libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang make cmake protobuf-compiler
+```
+
+2. **Install Rust:**
+nstall Rust using rustup, which is Rust's toolchain installer:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+source $HOME/.cargo/env
+rustup component add rustfmt
+
+rustup update
+```
+
+3. **Now clone the nexis network source code**
+
+```bash
+git clone https://github.com/nexis-network/nexis-network.git
+cd nexis-network
+```
+
+4. **Install all the binaries using:**
+
+```bash
+./scripts/cargo-install-all.sh .
+```
+
+5. **Run nexis cli:**
+
+```bash
+./nexis-network/target/release/nexis
+```
+
+This will start the Nexis CLI, allowing you to interact with the Nexis Native Chain directly from your terminal.
+
+# How to run a Validator?
+
+Follow this guide to run a validator on devnet, you can do the same for mainnet, once it's live.
+
+## Tune your machine for running validators
+
+Your system will need to be tuned in order to run properly. Your validator may not start without the settings below.
+
+Run the following commands in your machine:
+
+```bash
+sudo bash -c "cat >/etc/sysctl.d/21-nexis-validator.conf <<EOF
+# Increase UDP buffer sizes
+net.core.rmem_default = 134217728
+net.core.rmem_max = 134217728
+net.core.wmem_default = 134217728
+net.core.wmem_max = 134217728
+
+# Increase memory mapped files limit
+vm.max_map_count = 1000000
+
+# Increase number of allowed open file descriptors
+fs.nr_open = 1000000
+EOF"
+```
+
+```bash
+sudo sysctl -p /etc/sysctl.d/21-nexis-validator.conf
+```
+
+paste the following in your terminal next:
+
+```
+LimitNOFILE=1000000
+DefaultLimitNOFILE=1000000
+```
+
+once you are done with this, run the following 
+
+```
+sudo systemctl daemon-reload
+```
+
+```
+sudo bash -c "cat >/etc/security/limits.d/90-nexis-nofiles.conf <<EOF
+# Increase process file descriptor count limit
+* - nofile 1000000
+EOF"
+```
+
+Voila! You have tuned your system now to run Nexis Validators , make sure you close the terminal and start a new one after following this guide!
+
+## Change Nexis CLI configurations
+
+Run the following command to point to devnet
+
+```
+nexis config set --url http://185.26.8.199:8899
+```
+
+## Generate the keypairs
+
+
+1. Validator keypair
+
+```bash
+   nexis-keygen new -o ~/validator-keypair.json
+```
+
+2. Vote account keypair
+
+```bash
+    nexis-keygen new -o ~/vote-keypair.json
+```
+
+3. Withdraw keypair
+
+```bash
+    nexis-keygen new -o ~/withdraw-keypair.json
+```
+
+## Fund Validator address
+
+```
+nexis airdrop 10 ~/validator-keypair.json
+```
+
+## Create vote account
+
+Set validator keypair as default keypair for Nexis CLI
+
+```
+nexis config set --keypair ~/validator-keypair.json
+```
+
+Create a vote account
+
+```
+nexis create-vote-account --commission 8 ~/vote-keypair.json ~/validator-keypair.json ~/withdraw-keypair.json
+```
+
+## Start validator
+
+Now run the following command to start the validator
+
+```
+nexis-validator \
+        --known-validator GqQ9UHo1tEsnAxAJQqbyuJtkgfkGt2oLzKv6fVsjcL41 \
+        --known-validator 6sfoXMhgqc9cft256xqWEmJaAQYQ63sd6k7412JNq6Hz \
+        --entrypoint 185.26.8.199:8000 \
+        --expected-shred-version 45882 \
+        --expected-genesis-hash 3CmTysjA15eRWXaU9aHRvgkMK53KZx2iYo8S7QYitoSx \
+        --snapshot-interval-slots 300 \
+        --full-snapshot-interval-slots 3000 \
+        --identity ~/validator-keypair.json \
+        --vote-account ~/vote-keypair.json \
+        --ledger ~/ledger/ \
+        --dynamic-port-range 8000-10000 \
+        --rpc-port 8899 \
+        --log ~/nexis-validator.log \
+        --no-poh-speed-test \
+        --limit-ledger-size 50000000
+```
+
+Voila! Your validator is running now, wait for few minutes and it should be visible in the validators list.
+
+You can check it by running the following command 
+
+```
+nexis validators
+```
+
+It should output something like this 
+
+```
+  Identity                                      Vote Account                            Commission  Last Vote        Root Slot     Skip Rate  Credits  Version    Active Stake
+  6sfoXMhgqc9cft256xqWEmJaAQYQ63sd6k7412JNq6Hz  4tLeMbHGdQAWJjZsEgFNsc6gLu6VAQM2zzJsqQXARVpL    8%     154429 (  0)     154398 (  0)    -       23388    0.7.0         0.000000000 NZT (0.00%)
+  GqQ9UHo1tEsnAxAJQqbyuJtkgfkGt2oLzKv6fVsjcL41  EbtdDPaXC7Q5YxUG1GewAkEzWR7xQyh6TP5PtBG9VKQk    8%     154429 (  0)     154398 (  0)   0.00%    23391    0.7.0    166707.392939848 NZT (100.00%)
+Majority count: 0%
+
+Average Stake-Weighted Skip Rate: 0.00%
+Average Unweighted Skip Rate:     0.00%
+
+Active Stake: 166707.392939848 NZT
+
+Stake By Version:
+0.7.0    -    2 current validators (100.00%)
+
+
+```
