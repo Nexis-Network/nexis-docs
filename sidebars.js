@@ -3,6 +3,7 @@ module.exports = {
     "home",
     // "setup-validator-nexis",
     "setup-val",
+    "setup-rpc",
     {
       type:"category",
       label:"Infrastructure",

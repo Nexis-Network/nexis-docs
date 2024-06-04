@@ -1,0 +1,152 @@
+---
+title: Setup a Nexis Network RPC Node
+sidebar_label: Nexis RPC Node Guide
+sidebar_position: 3
+---
+
+Follow this guide to setup Nexis RPC Node on Devnet
+
+## Setup Nexis CLI
+
+Nexis CLI is a powerful tool that allows you to interact with the Nexis Native Chain directly from your terminal. As a developer, setting it up locally is essential. Here's a step-by-step guide to get you started:
+
+1. **Update and Install Dependencies:**
+
+```bash
+sudo apt-get update
+sudo apt-get install libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang make cmake protobuf-compiler
+```
+
+2. **Install Rust:**
+nstall Rust using rustup, which is Rust's toolchain installer:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+source $HOME/.cargo/env
+rustup component add rustfmt
+
+rustup update
+```
+
+3. **Now clone the nexis network source code**
+
+```bash
+git clone https://github.com/nexis-network/nexis-network.git
+cd nexis-network
+```
+
+4. **Install all the binaries using:**
+
+```bash
+./scripts/cargo-install-all.sh .
+```
+
+5. **Run nexis cli:**
+
+```bash
+./nexis-network/target/release/nexis
+```
+
+Note: Make sure to add the nexis cli as binary on your machine. By following the command line instructions, visible on screen after installation of all packages.
+
+This will start the Nexis CLI, allowing you to interact with the Nexis Native Chain directly from your terminal.
+
+# How to run a Nexis RPC Node?
+
+Follow this guide to run a Nexis RPC node on devnet, you can do the same for mainnet, once it's live.
+
+## Tune your machine for running validators
+
+Your system will need to be tuned in order to run properly. Your validator may not start without the settings below.
+
+Run the following commands in your machine:
+
+```bash
+sudo bash -c "cat >/etc/sysctl.d/21-nexis-validator.conf <<EOF
+# Increase UDP buffer sizes
+net.core.rmem_default = 134217728
+net.core.rmem_max = 134217728
+net.core.wmem_default = 134217728
+net.core.wmem_max = 134217728
+
+# Increase memory mapped files limit
+vm.max_map_count = 1000000
+
+# Increase number of allowed open file descriptors
+fs.nr_open = 1000000
+EOF"
+```
+
+```bash
+sudo sysctl -p /etc/sysctl.d/21-nexis-validator.conf
+```
+
+paste the following in your terminal next:
+
+```
+LimitNOFILE=1000000
+DefaultLimitNOFILE=1000000
+```
+
+once you are done with this, run the following 
+
+```
+sudo systemctl daemon-reload
+```
+
+```
+sudo bash -c "cat >/etc/security/limits.d/90-nexis-nofiles.conf <<EOF
+# Increase process file descriptor count limit
+* - nofile 1000000
+EOF"
+```
+
+Voila! You have tuned your system now to run Nexis Validators , make sure you close the terminal and start a new one after following this guide!
+
+## Change Nexis CLI configurations
+
+Run the following command to point to devnet
+
+```
+nexis config set --url http://185.26.8.199:8899
+```
+
+## Generate the Validator keypair
+
+```bash
+   nexis-keygen new -o ~/validator-keypair.json
+```
+
+## Fund Validator address 
+
+```
+nexis airdrop 10 ~/validator-keypair.json
+```
+
+## Start validator
+
+Now run the following command to start the validator
+
+```
+nexis-validator \
+        --known-validator GqQ9UHo1tEsnAxAJQqbyuJtkgfkGt2oLzKv6fVsjcL41 \
+        --known-validator 6sfoXMhgqc9cft256xqWEmJaAQYQ63sd6k7412JNq6Hz \
+        --entrypoint 185.26.8.199:8000 \
+        --expected-shred-version 45882 \
+        --expected-genesis-hash 3CmTysjA15eRWXaU9aHRvgkMK53KZx2iYo8S7QYitoSx \
+        --only-known-rpc \
+        --full-rpc-api \
+        --no-voting \
+        --identity ~/validator-keypair.json \
+        --ledger ~/ledger/ \
+        --rpc-bind-address 0.0.0.0 \
+        --private-rpc \
+        --dynamic-port-range 8000-10000 \
+        --rpc-port 8899 \
+        --log ~/nexis-validator.log \
+        --no-poh-speed-test \
+        --wal-recovery-mode skip_any_corrupted_record \
+        --limit-ledger-size 50000000
+```
+
+Voila! Your RPC Node is running now, You can access it by visiting the 8899 port of your localhost.
