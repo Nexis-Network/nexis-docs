@@ -12,7 +12,6 @@ module.exports = {
         'architecture',
         'clusters',
         'command-line',
-        'create-metamask-wallet',
         'developing_native_exzo',
         'disclaimer',
         'grants',
@@ -24,7 +23,6 @@ module.exports = {
         'solidity_tutorials',
         'staking',
         'validating',
-        'wallet_metamask',
         'wallets',
         
       ]
@@ -54,7 +52,7 @@ module.exports = {
               label: "Wallet Extensions",
               collapsed:false,
               items: [
-                'metamask',
+                'setup_metamask',
               ],
             }
           ],

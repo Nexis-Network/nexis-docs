@@ -5,9 +5,60 @@ title: Setting Up MetaMask
 
 # Set up MetaMask
 
-This tutorial will help you connect MetaMask to Nexis Network Mainnet or Testnet via a custom RPC endpoint. You may pick one in this list of public endpoints here, and follow the following steps.
+This tutorial will help you setup MetaMask and add Nexis Network Mainnet or Testnet via a custom RPC endpoint. You may pick one in this list of public endpoints here, and follow the following steps.
 
-## Mainnet
+## Install MetaMask
+1. Open https://metamask.io website or search for “Metamask extension” in your favorite browser. You can install Metamask for: 
+* [Chrome](https://chrome.google.com/webstore/detail/nkbihfbeogaeaoehlefnkodbefgpgknn)
+* [Firefox](https://addons.mozilla.org/en-US/firefox/addon/ether-metamask/)
+* [Opera](https://addons.opera.com/en/extensions/details/metamask/)
+
+2. Click Add to Chrome to install MetaMask as Google Chrome extension (same as for other browsers).
+
+3. Click Add Extension.
+
+## Create/Import MetaMask Wallet
+In order to import an existing wallet to a MetaMask account, follow these simple step-by-step instructions. You will need to install the MetaMask extension for your favorite browser, import a wallet using private key or JSON file and add PBL tokens to the list.
+
+### Option 1 - Create Wallet
+
+1. When the extension is installed, click on the icon in the upper right corner to open the MetaMask, read the introductions and click Continue.
+2. Create a strong password and click Create.
+3. Read the introduction text, then accept terms of use and privacy note. Click Accept.
+4. Reveal secret words by clicking on the image. You will see a 12 words seed phrase. Copy your secret phrase and store it n a safe place. When ready click Next.
+5. Confirm your Secret phrase by selecting words in the same order as in your secret phrase. Then click Confirm.
+6. That’s it! You have successfully created an account in MetaMask with a wallet address!
+
+Now you can view your address on Etherscan (Ethereum blockchain explorer), check the QR code, copy your wallet’s address to clipboard or export your wallet’s private key:
+
+### Option 2 - Import Existing Wallet
+#### Via Mnemonic Phase
+There are two ways how to export an existing account. If you have a seed words (mnemonic phrase) you can export your wallet straight away:
+
+1. Click on the icon in the upper right corner to open MetaMask extension, read and accept the terms. Click Continue.
+2. Click Import With Seed Phrase.
+3. Enter your wallets seed phrase (mnemonic phrase).
+4. Enter a strong password.
+5. Click Import.
+
+
+You have successfully imported your wallet to MetaMask.
+
+#### Via Private Key
+If you have an existing wallet address but you don’t have a mnemonic phrase, you can import your wallet address to MetaMask using a private key or JSON file.
+
+1. After creating an account, click on the “Account” button in the upper right corner (see screenshots below).
+2. Click Import account.
+3. Select preferred entry type. If you want to import an account using your wallet’s private key, simply paste your private key string and click Import.
+
+
+That’s it! You have successfully imported your cryptocurrency wallet to your MetaMask account.
+
+
+## RPC URLS
+Once you have setup your wallet, you can add Nexis Network to it. 
+
+### Mainnet
 
 1. Network Name: Nexis Network
 2. RPC Url: https://evm.nexis.network​
@@ -15,7 +66,7 @@ This tutorial will help you connect MetaMask to Nexis Network Mainnet or Testnet
 4. Symbol: NZT
 5. Block Explorer URL: https://evm.nexscan.io​
 
-## Testnet
+### Testnet
 
 1. Network Name: Nexis Network Testnet
 2. New RPC Url: https://evm-testnet.nexis.network
