@@ -11,7 +11,7 @@ The nexis cli includes `get` and `set` configuration commands to automatically
 set the `--url` argument for cli commands. For example:
 
 ```bash
-nexis config set --url http://api.devnet.nexis.com
+nexis config set --url https://api.devnet.nexis.com
 ```
 
 While this section demonstrates how to connect to the Devnet cluster, the steps
@@ -189,7 +189,7 @@ You should see the following output:
 
 ```text
 Config File: /home/nexis/.config/nexis/cli/config.yml
-RPC URL: http://api.devnet.nexis.com
+RPC URL: https://api.devnet.nexis.com
 WebSocket URL: ws://api.devnet.nexis.com/ (computed)
 Keypair Path: /home/nexis/validator-keypair.json
 Commitment: confirmed
@@ -328,7 +328,7 @@ The default value attempts to keep the blockstore (data within the rocksdb
 directory) disk usage under 500 GB. More or less disk usage may be requested
 by adding an argument to `--limit-ledger-size` if desired. More information
 about selecting a custom limit value is [available
-here](https://github.com/nexis-network/nexis/blob/aa72aa87790277619d12c27f1ebc864d23739557/core/src/ledger_cleanup_service.rs#L26-L37).
+here](https://github.com/nexis-network/nexis-network/blob/aa72aa87790277619d12c27f1ebc864d23739557/core/src/ledger_cleanup_service.rs#L26-L37).
 
 Note that the above target of 500 GB does not account for other items that
 may reside in the `ledger` directory, depending on validator configuration.

@@ -10,12 +10,12 @@ testnet participants, [https://nexis.com/discord](https://nexis.com/discord)
 
 ## Useful Links & Discussion
 
-- [Network Explorer](http://explorer.nexis.com/)
+- [Network Explorer](https://nexscan.io/)
 - [Testnet Metrics Dashboard](https://metrics.nexis.com:3000/d/monitor-edge/cluster-telemetry-edge?refresh=60s&orgId=2)
 - Validator [Discord](https://nexis.com/discord) channels
   - `#validator-support` --  General support channel for any Validator related queries.
   - `#testnet-announcements` -- The single source of truth for critical information relating Testnet
-- [Core software repo](https://github.com/nexis-network/nexis)
+- [Core software repo](https://github.com/nexis-network/nexis-network)
 
 ## Blockstore
 

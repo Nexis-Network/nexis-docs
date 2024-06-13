@@ -11,8 +11,7 @@ Before you begin make sure you have first
 
 Explorers:
 
-- [http://explorer.nexis.com/](https://explorer.nexis.com/).
-- [http://nexisbeach.io/](http://nexisbeach.io/).
+- [https://nexscan.io/](https://nexscan.io/).
 
 ## Devnet
 

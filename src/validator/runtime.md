@@ -65,4 +65,4 @@ To pass messages between programs, the receiving program must accept the message
 
 ## Future Work
 
-- [Continuations and Signals for long running Transactions](https://github.com/nexis-network/nexis/issues/1485)
+- [Continuations and Signals for long running Transactions](https://github.com/nexis-network/nexis-network/issues/1485)

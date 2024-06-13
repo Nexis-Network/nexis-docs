@@ -44,7 +44,7 @@ There are multiple ways to install the Nexis Network tools on your computer depe
 - Install the Nexis Network release LATEST_Nexis Network_RELEASE on your machine by running:
 
 ```bash {{ title: 'Command' }}
-curl -sSf https://raw.githubusercontent.com/nexis-network/nexis/develop/install/nexis-network-install-init.sh | sh -s - LATEST_ENZTNETWORK_RELEASE
+curl -sSf https://raw.githubusercontent.com/nexis-network/nexis-network/develop/install/nexis-network-install-init.sh | sh -s - LATEST_ENZTNETWORK_RELEASE
 ```
 
 - If you are connecting to a different testnet, you can replace LATEST_ENZTNETWORK_RELEASE with the release tag matching the software version of your desired testnet, or replace it with the named channel stable, beta, or edge.
@@ -57,7 +57,7 @@ Active release directory: /home/nexis-network/.local/share/nexis-network/install
 ```
 
 - Release version: LATEST_ENZTNETWORK_RELEASE
-- Release URL: https://github.com/nexis-network/nexis/releases/download/LATEST_ENZTNETWORK_RELEASE/nexis-network-release-x86_64-unknown-linux-gnu.tar.bz2 {{className: 'break-words'}}
+- Release URL: https://github.com/nexis-network/nexis-network/releases/download/LATEST_ENZTNETWORK_RELEASE/nexis-network-release-x86_64-unknown-linux-gnu.tar.bz2 {{className: 'break-words'}}
 
 ### Update successful
 
@@ -87,7 +87,7 @@ Open a Command Prompt (cmd.exe) as an Administrator {{className: 'dark:text-whit
 - Copy and paste the following command, then press Enter to download the Nexis Network installer into a temporary directory:
 
 ```bash {{ title: 'Command' }}
-curl -L https://github.com/nexis-network/nexis/releases/download/v0.5.1/nexis-network-install-init-x86_64-pc-windows-msvc.exe --output C:\nexis-install-tmp\nexis-install-init.exe --create-dirs
+curl -L https://github.com/nexis-network/nexis-network/releases/download/v0.5.1/nexis-network-install-init-x86_64-pc-windows-msvc.exe --output C:\nexis-install-tmp\nexis-install-init.exe --create-dirs
 ```
 
 - Copy and paste the following command, then press Enter to install the latest stable version of Nexis Network. If you see a security pop-up by your system, please select to allow the program to run.
@@ -111,7 +111,7 @@ If you would rather not use nexis-install to manage the install, you can manuall
 
 ### Linux
 
-Download the binaries by navigating to https://github.com/nexis-network/nexis/releases/latest, download nexis-network-release-x86_64-unknown-linux-msvc.tar.bz2, then extract the archive: {{ className: 'break-words'}}
+Download the binaries by navigating to https://github.com/nexis-network/nexis-network/releases/latest, download nexis-network-release-x86_64-unknown-linux-msvc.tar.bz2, then extract the archive: {{ className: 'break-words'}}
 
 ```bash {{ title: 'Command' }}
 tar jxf nexis-release-x86_64-unknown-linux-gnu.tar.bz2
@@ -121,7 +121,7 @@ export PATH=$PWD/bin:$PATH
 
 ### MacOS
 
-Download the binaries by navigating to https://github.com/nexis-network/nexis/releases/latest, download nexis-network-release-x86_64-apple-darwin.tar.bz2, then extract the archive:
+Download the binaries by navigating to https://github.com/nexis-network/nexis-network/releases/latest, download nexis-network-release-x86_64-apple-darwin.tar.bz2, then extract the archive:
 
 ```bash {{ title: 'Command' }}
 tar jxf nexis-release-x86_64-apple-darwin.tar.bz2
@@ -131,7 +131,7 @@ export PATH=$PWD/bin:$PATH
 
 ### Windows
 
-- Download the binaries by navigating to https://github.com/nexis-network/nexis/releases/latest, download nexis-network-release-x86_64-pc-windows-msvc.tar.bz2, then extract the archive using WinZip or similar. {{ className: 'break-words'}}
+- Download the binaries by navigating to https://github.com/nexis-network/nexis-network/releases/latest, download nexis-network-release-x86_64-pc-windows-msvc.tar.bz2, then extract the archive using WinZip or similar. {{ className: 'break-words'}}
 - Open a Command Prompt and navigate to the directory into which you extracted the binaries and run:
 
 ```bash {{ title: 'Command' }}
@@ -141,7 +141,7 @@ set PATH=%cd%/bin;%PATH%
 
 ## Build From Source
 
-If you are unable to use the prebuilt binaries or prefer to build it yourself from source, navigate to https://github.com/nexis-network/nexis/releases/latest, and download the Source Code archive. Extract the code and build the binaries with:
+If you are unable to use the prebuilt binaries or prefer to build it yourself from source, navigate to https://github.com/nexis-network/nexis-network/releases/latest, and download the Source Code archive. Extract the code and build the binaries with:
 
 ```bash {{ title: 'Command' }}
 ./scripts/cargo-install-all.sh .
@@ -1916,7 +1916,7 @@ OPTIONS:
         --nonce <PUBKEY>                    Provide the nonce account to use when creating a nonced
                                             transaction. Nonced transactions are useful when a transaction
                                             requires a lengthy signing process. Learn more about nonced
-                                            transactions at https://docs. nexis-network.com/cli/durable-nonce/
+                                            transactions at https://docs. nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>         Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                   Return information in specified output format [possible values: json, json-
                                             compact]
@@ -2014,7 +2014,7 @@ OPTIONS:
         --nonce <PUBKEY>                   Provide the nonce account to use when creating a nonced
                                            transaction. Nonced transactions are useful when a transaction
                                            requires a lengthy signing process. Learn more about nonced
-                                           transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                           transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>        Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
@@ -2092,7 +2092,7 @@ OPTIONS:
         --nonce <PUBKEY>                   Provide the nonce account to use when creating a nonced
                                            transaction. Nonced transactions are useful when a transaction
                                            requires a lengthy signing process. Learn more about nonced
-                                           transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                           transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>        Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
@@ -2302,8 +2302,8 @@ OPTIONS:
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
         --ws <URL>                         WebSocket URL for the nexis cluster
-nexis-network-gossip#
-nexis-network-gossip
+nexis-gossip#
+nexis-gossip
 Show the current gossip network nodes
 
 USAGE:
@@ -2508,7 +2508,7 @@ OPTIONS:
         --nonce <PUBKEY>                   Provide the nonce account to use when creating a nonced
                                            transaction. Nonced transactions are useful when a transaction
                                            requires a lengthy signing process. Learn more about nonced
-                                           transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                           transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>        Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
@@ -2812,7 +2812,7 @@ OPTIONS:
         --nonce <PUBKEY>                   Provide the nonce account to use when creating a nonced
                                            transaction. Nonced transactions are useful when a transaction
                                            requires a lengthy signing process. Learn more about nonced
-                                           transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                           transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>        Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
@@ -2912,7 +2912,7 @@ OPTIONS:
         --nonce <PUBKEY>                     Provide the nonce account to use when creating a nonced
                                              transaction. Nonced transactions are useful when a transaction
                                              requires a lengthy signing process. Learn more about nonced
-                                             transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                             transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>          Provide the nonce authority keypair to use when signing a nonced
                                              transaction
         --output <FORMAT>                    Return information in specified output format [possible values: json, json-
@@ -2998,7 +2998,7 @@ OPTIONS:
         --nonce <PUBKEY>                    Provide the nonce account to use when creating a nonced
                                             transaction. Nonced transactions are useful when a transaction
                                             requires a lengthy signing process. Learn more about nonced
-                                            transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                            transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>         Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                   Return information in specified output format [possible values: json, json-
                                             compact]
@@ -3174,7 +3174,7 @@ OPTIONS:
         --nonce <PUBKEY>                   Provide the nonce account to use when creating a nonced
                                            transaction. Nonced transactions are useful when a transaction
                                            requires a lengthy signing process. Learn more about nonced
-                                           transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                           transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>        Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
@@ -3588,7 +3588,7 @@ OPTIONS:
         --nonce <PUBKEY>                   Provide the nonce account to use when creating a nonced
                                            transaction. Nonced transactions are useful when a transaction
                                            requires a lengthy signing process. Learn more about nonced
-                                           transactions at https://docs.nexis-network.com/cli/durable-nonce/
+                                           transactions at https://docs.nexis.network/cli/durable-nonce/
         --nonce-authority <KEYPAIR>        Provide the nonce authority keypair to use when signing a nonced transaction
         --output <FORMAT>                  Return information in specified output format [possible values: json, json-
                                            compact]
