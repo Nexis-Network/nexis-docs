@@ -106,7 +106,7 @@ Voila! You have tuned your system now to run Nexis Validators , make sure you cl
 Run the following command to point to devnet
 
 ```
-nexis config set --url http://185.26.8.199:8899
+nexis config set --url https://api.devnet.nexis.network
 ```
 
 ## Generate the keypairs
@@ -158,9 +158,9 @@ Now run the following command to start the validator
 nexis-validator \
         --known-validator GqQ9UHo1tEsnAxAJQqbyuJtkgfkGt2oLzKv6fVsjcL41 \
         --known-validator 6sfoXMhgqc9cft256xqWEmJaAQYQ63sd6k7412JNq6Hz \
-        --entrypoint 185.26.8.199:8000 \
-        --expected-shred-version 45882 \
-        --expected-genesis-hash 3CmTysjA15eRWXaU9aHRvgkMK53KZx2iYo8S7QYitoSx \
+        --entrypoint 185.26.8.199:8001 \
+        --expected-shred-version 57296 \
+        --expected-genesis-hash 32idzKqo9krxEJjDP5LxBvK5BMQuktvz3sbqKDZMprN9 \
         --snapshot-interval-slots 300 \
         --full-snapshot-interval-slots 3000 \
         --identity ~/validator-keypair.json \
@@ -170,7 +170,10 @@ nexis-validator \
         --rpc-port 8899 \
         --log ~/nexis-validator.log \
         --no-poh-speed-test \
-        --limit-ledger-size 50000000
+        --limit-ledger-size 50000000 \
+        --evm-state-archive ~/ledger/evm-state-archive \
+        --evm-state ~/ledger/evm-state 
+        --log ~/nexis-validator.log
 ```
 
 Voila! Your validator is running now, wait for few minutes and it should be visible in the validators list.
