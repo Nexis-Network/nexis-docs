@@ -2685,7 +2685,7 @@ $ npm install --save @nexis-network/web3
 
 ## Development Environment Setup
 
-Install the latest Nexis Network release from https://docs.nexis-network.com/cli/install-nexis-network-cli-tools
+Install the latest Nexis Network release from https://docs.nexis.network/cli/install-nexis-network-cli-tools
 
 ### BPF program development
 
@@ -3120,7 +3120,7 @@ For example:
 First setup the environment:
 
 - Install the latest Rust stable from https://rustup.rs/ {{className: 'break-words'}}
-- Install the latest Nexis Network command-line tools from https://docs.nexis-network.com/cli/install-nexisn-etwork-cli-tools {{className: 'break-words'}}
+- Install the latest Nexis Network command-line tools from https://docs.nexis.network/cli/install-nexisn-etwork-cli-tools {{className: 'break-words'}}
 
 The normal cargo build is available for building programs against your host machine which can be used for unit testing:
 
@@ -3360,7 +3360,7 @@ Take a look at helloworld for an example of a C program.
 
 First setup the environment:
 
-Install the latest Rust stable from https://rustup.rs Install the latest Nexis Network command-line tools from https://docs.nexis-network.com/cli/install-nexis-network-cli-tools Then build using make:
+Install the latest Rust stable from https://rustup.rs Install the latest Nexis Network command-line tools from https://docs.nexis.network/cli/install-nexis-network-cli-tools Then build using make:
 
 ```bash {{ title: '' }}
 make -C <program directory>
@@ -3633,7 +3633,7 @@ An implementation of a program might also cause this error when performing a cro
 
 This program error can occur while trying to deserialize the instruction, check that the structure passed in matches exactly the instruction. There may be some padding between fields. If the program implements the Rust `Pack` trait then try packing and unpacking the instruction type `T` to determine the exact encoding the program expects:
 
-https://github.com/nexis-network/nexis/blob/v0.3.6/sdk/program/src/program_pack.rs {{className: 'break-words'}}
+https://github.com/nexis-network/nexis-network/blob/v0.3.6/sdk/program/src/program_pack.rs {{className: 'break-words'}}
 
 ### MissingRequiredSignature
 

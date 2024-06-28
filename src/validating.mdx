@@ -441,7 +441,7 @@ Note that a stake account may only be used once, so after deactivation, use the 
 Confirm the IP address and identity pubkey of your validator is visible in the gossip network by running:
 
 ```bash {{ title: '' }}
-nexis-network-gossip spy --entrypoint bootstrap.nexis-network.com:8001
+nexis-gossip spy --entrypoint bootstrap.nexis.network:8001
 ```
 
 ## Check Your Balance
@@ -465,14 +465,14 @@ nexis vote-account ~/vote-account-keypair.json
 There are several useful JSON-RPC endpoints for monitoring your validator on the cluster, as well as the health of the cluster:
 
 ```bash {{ title: '' }}
-# Similar to nexis-network-gossip, you should see your validator in the list of cluster nodes
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getClusterNodes"}' https://explorer.testnet.nexis-network.com/rpc
+# Similar to nexis-gossip, you should see your validator in the list of cluster nodes
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getClusterNodes"}' https://api.testnet.nexis.network
 # If your validator is properly voting, it should appear in the list of `current` vote accounts. If staked, `stake` should be > 0
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getVoteAccounts"}' https://explorer.testnet.nexis-network.com/rpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getVoteAccounts"}' https://api.testnet.nexis.network
 # Returns the current leader schedule
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getLeaderSchedule"}' https://explorer.testnet.nexis-network.com/rpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getLeaderSchedule"}' https://api.testnet.nexis.network
 # Returns info about the current epoch. slotIndex should progress on subsequent calls.
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getEpochInfo"}' https://explorer.testnet.nexis-network.com/rpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1, "method":"getEpochInfo"}' https://api.testnet.nexis.network
 ```
 
 <GuidesOther

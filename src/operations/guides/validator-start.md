@@ -11,7 +11,7 @@ The nexis cli includes `get` and `set` configuration commands to automatically
 set the `--url` argument for cli commands. For example:
 
 ```bash
-nexis config set --url http://api.devnet.nexis.com
+nexis config set --url https://api.devnet.nexis.com
 ```
 
 While this section demonstrates how to connect to the Devnet cluster, the steps
@@ -189,7 +189,7 @@ You should see the following output:
 
 ```text
 Config File: /home/nexis/.config/nexis/cli/config.yml
-RPC URL: http://api.devnet.nexis.com
+RPC URL: https://api.devnet.nexis.com
 WebSocket URL: ws://api.devnet.nexis.com/ (computed)
 Keypair Path: /home/nexis/validator-keypair.json
 Commitment: confirmed
@@ -328,7 +328,7 @@ The default value attempts to keep the blockstore (data within the rocksdb
 directory) disk usage under 500 GB. More or less disk usage may be requested
 by adding an argument to `--limit-ledger-size` if desired. More information
 about selecting a custom limit value is [available
-here](https://github.com/nexis-network/nexis/blob/aa72aa87790277619d12c27f1ebc864d23739557/core/src/ledger_cleanup_service.rs#L26-L37).
+here](https://github.com/nexis-network/nexis-network/blob/aa72aa87790277619d12c27f1ebc864d23739557/core/src/ledger_cleanup_service.rs#L26-L37).
 
 Note that the above target of 500 GB does not account for other items that
 may reside in the `ledger` directory, depending on validator configuration.
@@ -342,7 +342,7 @@ These items may include (but are not limited to):
 Running the validator as a systemd unit is one easy way to manage running in the
 background.
 
-Assuming you have a user called `sol` on your machine, create the file `/etc/systemd/system/sol.service` with
+Assuming you have a user called `nexis` on your machine, create the file `/etc/systemd/system/nexis.service` with
 the following:
 
 ```
@@ -355,29 +355,29 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=1
-User=sol
+User=nexis
 LimitNOFILE=1000000
 LogRateLimitIntervalSec=0
-Environment="PATH=/bin:/usr/bin:/home/sol/.local/share/nexis/install/active_release/bin"
-ExecStart=/home/sol/bin/validator.sh
+Environment="PATH=/bin:/usr/bin:/home/nexis/.local/share/nexis/install/active_release/bin"
+ExecStart=/home/nexis/bin/validator.sh
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Now create `/home/sol/bin/validator.sh` to include the desired
+Now create `/home/nexis/bin/validator.sh` to include the desired
 `nexis-validator` command-line. Ensure that the 'exec' command is used to
 start the validator process (i.e. "exec nexis-validator ..."). This is
 important because without it, logrotate will end up killing the validator
 every time the logs are rotated.
 
-Ensure that running `/home/sol/bin/validator.sh` manually starts
-the validator as expected. Don't forget to mark it executable with `chmod +x /home/sol/bin/validator.sh`
+Ensure that running `/home/nexis/bin/validator.sh` manually starts
+the validator as expected. Don't forget to mark it executable with `chmod +x /home/nexis/bin/validator.sh`
 
 Start the service with:
 
 ```bash
-sudo systemctl enable --now sol
+sudo systemctl enable --now nexis
 ```
 
 ### Logging
@@ -408,23 +408,23 @@ instead of the validator's, which will kill them both.
 #### Using logrotate
 
 An example setup for the `logrotate`, which assumes that the validator is
-running as a systemd service called `sol.service` and writes a log file at
-/home/sol/nexis-validator.log:
+running as a systemd service called `nexis.service` and writes a log file at
+/home/nexis/nexis-validator.log:
 
 ```bash
 # Setup log rotation
 
-cat > logrotate.sol <<EOF
-/home/sol/nexis-validator.log {
+cat > logrotate.nexis <<EOF
+/home/nexis/nexis-validator.log {
   rotate 7
   daily
   missingok
   postrotate
-    systemctl kill -s USR1 sol.service
+    systemctl kill -s USR1 nexis.service
   endscript
 }
 EOF
-sudo cp logrotate.sol /etc/logrotate.d/sol
+sudo cp logrotate.nexis /etc/logrotate.d/nexis
 systemctl restart logrotate.service
 ```
 
@@ -449,8 +449,8 @@ partition.
 Example configuration:
 
 1. `sudo mkdir /mnt/nexis-accounts`
-2. Add a 300GB tmpfs partition by adding a new line containing `tmpfs /mnt/nexis-accounts tmpfs rw,size=300G,user=sol 0 0` to `/etc/fstab`
-   (assuming your validator is running under the user "sol"). **CAREFUL: If you
+2. Add a 300GB tmpfs partition by adding a new line containing `tmpfs /mnt/nexis-accounts tmpfs rw,size=300G,user=nexis 0 0` to `/etc/fstab`
+   (assuming your validator is running under the user "nexis"). **CAREFUL: If you
    incorrectly edit /etc/fstab your machine may no longer boot**
 3. Create at least 250GB of swap space
 

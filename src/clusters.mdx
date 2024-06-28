@@ -17,9 +17,9 @@ Before you begin make sure you have first installed the Nexis Network command li
 
 Explorers:
 
-- http://nexscan.io/ Native explorer.
+- https://nexscan.io/ Native explorer.
 - https://evm.nexscan.io/ EVM mainnet explorer.
-- https://testnet.nexscan.io/ EVM testnet explorer.
+- https://evm-testnet.nexscan.io/ EVM testnet explorer.
 
 ## Testnet
 
@@ -40,7 +40,7 @@ Explorers:
         RPC
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://testnet.nexis.network`
+        `https://api.testnet.nexis.network`
       </td>
     </tr>
     <tr>
@@ -56,8 +56,7 @@ Explorers:
         Block Explorer
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `nexis airdrop 1 -u https://api.testnet.nexis.network --faucet-host
-        airdrop.testnet.nexis.network`
+        `https://nexscan.io`
       </td>
     </tr>
     <tr>
@@ -97,7 +96,7 @@ Explorers:
         ETH RPC
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://evm.testnet.nexscan.io/rpc`
+        `https://evm-testnet.nexis.network`
       </td>
     </tr>
     <tr>
@@ -105,7 +104,7 @@ Explorers:
         ETH Websocket
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `wss://api.testnet.nexscan.io/`
+        `wss://evm-testnet.nexis.network/`
       </td>
     </tr>
     <tr>
@@ -113,15 +112,7 @@ Explorers:
         Block Explorer
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://evmexplorer.testnet.nexscan.io`
-      </td>
-    </tr>
-    <tr>
-      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        Block Explorer
-      </td>
-      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://explorer.testnet.nexscan.io` (V-encoded Legacy addresses)
+        `https://evm-explorer.nexscan.io`
       </td>
     </tr>
     <tr>
@@ -143,7 +134,7 @@ Explorers:
   - Testnet includes a token faucet for airdrops for application testing
   - Testnet may be subject to ledger resets
   - Testnet typically runs a newer software version than Mainnet Beta
-- Gossip entrypoint for Testnet: `bootstrap.testnet.nexis-network.com:8001`
+- Gossip entrypoint for Testnet: `bootstrap.testnet.nexis.network:8001`
 
 ## Mainnet
 
@@ -164,7 +155,7 @@ Explorers:
         RPC
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://api.nexscan.io`
+        `https://api.mainnet.nexis.network`
       </td>
     </tr>
     <tr>
@@ -172,7 +163,7 @@ Explorers:
         Websocket
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `wss://api.nexscan.io`
+        `wss://api.mainnet.nexis.network`
       </td>
     </tr>
     <tr>
@@ -180,7 +171,7 @@ Explorers:
         Block Explorer
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://native.nexscan.io`
+        `https://nexscan.io`
       </td>
     </tr>
     <tr>
@@ -227,7 +218,7 @@ Explorers:
         ETH RPC
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://evm-explorer.nexscan.io/rpc`
+        `https://evm.nexis.network`
       </td>
     </tr>
     <tr>
@@ -235,7 +226,7 @@ Explorers:
         ETH Websocket
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `wss://api.nexscan.io/`
+        `wss://evm.nexis.network`
       </td>
     </tr>
     <tr>
@@ -244,14 +235,6 @@ Explorers:
       </td>
       <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
         `https://evm.nexscan.io`
-      </td>
-    </tr>
-    <tr>
-      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        Block Explorer
-      </td>
-      <td className="border border-slate-300 px-3 py-0 text-slate-500 dark:border-slate-700 dark:text-slate-200">
-        `https://evm-explorer.nexscan.io/` (V-encoded Legacy addresses)
       </td>
     </tr>
   </tbody>
@@ -265,7 +248,7 @@ Explorers:
 ### Example `nexis` command-line configuration
 
 ```bash {{ title: '' }}
-nexisconfig set --url https://api.nexscan.io
+nexis config set --url https://api.mainnet.nexis.network
 ```
 
 ### Example `nexis-validator` command-line
@@ -303,7 +286,7 @@ First, setup Rust, Cargo and system packages as described in the Nexis Network R
 Now checkout the code from GitHub:
 
 ```bash {{ title: '' }}
-git clone https://github.com/nexis-network/nexis.git
+git clone https://github.com/nexis-network/nexis-network.git
 cd nexis
 ```
 
@@ -414,7 +397,7 @@ This will dump all the threads stack traces into gdb.txt
 In this example the client connects to our public testnet. To run validators on the testnet you would need to open udp ports `8000-10000`.
 
 ```bash {{ title: '' }}
-NDEBUG=1 ./multinode-demo/bench-tps.sh --entrypoint bootstrap.testnet.nexscan.io:8001 --faucet bootstrap.testnet.nexscan.io:9900 --duration 60 --tx_count 50
+NDEBUG=1 ./multinode-demo/bench-tps.sh --entrypoint bootstrap-testnet.nexis.network:8001 --faucet api.testnet.nexis.network:9900 --duration 60 --tx_count 50
 ```
 
 <GuidesOther

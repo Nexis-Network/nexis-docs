@@ -23,7 +23,7 @@ You will want to be aware of the following flags:
 ```
 #!/bin/bash
 exec nexis-validator \
-    --identity /home/sol/validator-keypair.json \
+    --identity /home/nexis/validator-keypair.json \
     --known-validator 5D1fNXzvv5NjV1ysLjirC4WY92RNsVH18vjmcszZd8on \
     --known-validator dDzy5SR3AXdYWVqbDEkVFdvSPCtS9ihF5kJkHCtXoFs \
     --known-validator eoKpUABi59aT4rR9HGS3LcMecfut9x7zJyodWWP43YQ \
@@ -35,7 +35,7 @@ exec nexis-validator \
     --no-voting \
     --ledger /mnt/ledger \
     --accounts /mnt/accounts \
-    --log /home/sol/nexis-rpc.log \
+    --log /home/nexis/nexis-rpc.log \
     --rpc-port 8899 \
     --rpc-bind-address 0.0.0.0 \
     --private-rpc \
