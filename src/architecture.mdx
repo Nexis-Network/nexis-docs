@@ -514,7 +514,7 @@ Updates the account with a new authorized voter or withdrawer, according to the 
 
 ### VoteInstruction::Vote(Vote)
 
-- account[0] - RW - The VoteState. VoteState::lockouts and VoteState::credits are updated according to voting lockout rules see [Tower BFT](https://docs.nexis.com/implemented-proposals/tower-bft.md).
+- account[0] - RW - The VoteState. VoteState::lockouts and VoteState::credits are updated according to voting lockout rules see [Tower BFT](https://docs.nexis.network/implemented-proposals/tower-bft.md).
 - account[1] - RO - sysvar::slot_hashes A list of some N most recent slots and their hashes for the vote to be verified against.
 - account[2] - RO - sysvar::clock The current network time, expressed in slots, epochs.
 

@@ -35,7 +35,7 @@ nexis-validator --help
 
 There are many operational reasons you may want to restart your validator. As a
 best practice, you should avoid a restart during a leader slot. A
-[leader slot](https://nexis.com/docs/terminology#leader-schedule) is the time
+[leader slot](https://nexis.network/docs/terminology#leader-schedule) is the time
 when your validator is expected to produce blocks. For the health of the cluster
 and also for your validator's ability to earn transaction fee rewards, you do
 not want your validator to be offline during an opportunity to produce blocks.

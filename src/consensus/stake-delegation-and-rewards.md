@@ -227,18 +227,18 @@ correctly. Voting incorrectly exposes that validator's stakes to
 ### Basics
 
 The network pays rewards from a portion of network
-[inflation](https://nexis.com/docs/terminology#inflation). The number of
+[inflation](https://nexis.network/docs/terminology#inflation). The number of
 lamports available to pay rewards for an epoch is fixed and must be evenly
 divided among all staked nodes according to their relative stake weight and
 participation. The weighting unit is called a
-[point](https://nexis.com/docs/terminology#point).
+[point](https://nexis.network/docs/terminology#point).
 
 Rewards for an epoch are not available until the end of that epoch.
 
 At the end of each epoch, the total number of points earned during the epoch is
 summed and used to divide the rewards portion of epoch inflation to arrive at a
 point value. This value is recorded in the bank in a
-[sysvar](https://nexis.com/docs/terminology#sysvar) that maps epochs to point
+[sysvar](https://nexis.network/docs/terminology#sysvar) that maps epochs to point
 values.
 
 During redemption, the stake program counts the points earned by the stake for

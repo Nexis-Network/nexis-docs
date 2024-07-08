@@ -19,14 +19,14 @@ validator which will allow your validator the opportunity to produce more blocks
 and earn rewards.
 
 Each staked validator earns inflation rewards from
-[vote credits](https://nexis.com/docs/terminology#vote-credit). Vote credits
+[vote credits](https://nexis.network/docs/terminology#vote-credit). Vote credits
 are assigned to validators that vote on
-[blocks](https://nexis.com/docs/terminology#block) produced by the
-[leader](https://nexis.com/docs/terminology#leader). The vote credits are given
+[blocks](https://nexis.network/docs/terminology#block) produced by the
+[leader](https://nexis.network/docs/terminology#leader). The vote credits are given
 to all validators that successfully vote on blocks that are added to the
 blockchain. Additionally, when the validator is the leader, it can earn
 transaction fees and storage
-[rent fees](https://nexis.com/docs/core/accounts#rent) for each block that it
+[rent fees](https://nexis.network/docs/core/accounts#rent) for each block that it
 produces that is added to the blockchain.
 
 Since all votes in Nexis Network happen on the blockchain, a validator incurs a
@@ -50,7 +50,7 @@ A voting validator can earn NZT through 2 methods:
 1. Inflationary rewards paid at the end of an epoch. See
    [staking rewards](../implemented-proposals/staking-rewards.md)
 2. Earning 50% of transaction fees for the blocks produced by the validator. See
-   [transaction fee basic economic design](https://nexis.com/docs/intro/transaction_fees#basic-economic-design)
+   [transaction fee basic economic design](https://nexis.network/docs/intro/transaction_fees#basic-economic-design)
 
 The following links are community provided resources that discuss the economics
 of running a validator:
@@ -83,7 +83,7 @@ providers create dedicated servers for projects that require a high volume of
 requests to the node. Someone with a background in development operations or
 software engineering will be a very important part of your team. You will need a
 strong understanding of the Nexis Network architecture and the
-[JSON RPC API](https://nexis.com/docs/rpc/http).
+[JSON RPC API](https://nexis.network/docs/rpc/http).
 
 Alternatively, you may be a development team that would like to run their own
 infrastructure. In this case, the RPC infrastructure could be a part of your

@@ -62,7 +62,7 @@ nexis delegate-stake ~/validator-stake-keypair.json ~/some-other-vote-account-ke
 ## Validator Stake Warm-up
 
 To combat various attacks on consensus, new stake delegations are subject to a
-[warm-up](https://nexis.com/docs/economics/staking/stake-accounts#delegation-warmup-and-cooldown) period.
+[warm-up](https://nexis.network/docs/economics/staking/stake-accounts#delegation-warmup-and-cooldown) period.
 
 Monitor a validator's stake during warmup by:
 
@@ -99,7 +99,7 @@ account.
 This is a normal transaction so the standard transaction fee will apply. The
 transaction fee range is defined by the genesis block. The actual fee will
 fluctuate based on transaction load. You can determine the current fee via the
-[RPC API “getRecentBlockhash”](https://nexis.com/docs/rpc/deprecated/getrecentblockhash) before submitting
+[RPC API “getRecentBlockhash”](https://nexis.network/docs/rpc/deprecated/getrecentblockhash) before submitting
 a transaction.
 
 Learn more about
@@ -108,7 +108,7 @@ Learn more about
 ## Monitor Your Staked Validator
 
 Confirm your validator becomes a
-[leader](https://nexis.com/docs/terminology#leader)
+[leader](https://nexis.network/docs/terminology#leader)
 
 - After your validator is caught up, use the `nexis balance` command to monitor
   the earnings as your validator is selected as leader and collects transaction
@@ -128,9 +128,9 @@ Confirm your validator becomes a
 
 Helpful JSON-RPC methods:
 
-- `getEpochInfo`[An epoch](https://nexis.com/docs/terminology#epoch) is the
-  time, i.e. number of [slots](https://nexis.com/docs/terminology#slot), for
-  which a [leader schedule](https://nexis.com/docs/terminology#leader-schedule)
+- `getEpochInfo`[An epoch](https://nexis.network/docs/terminology#epoch) is the
+  time, i.e. number of [slots](https://nexis.network/docs/terminology#slot), for
+  which a [leader schedule](https://nexis.network/docs/terminology#leader-schedule)
   is valid. This will tell you what the current epoch is and how far into it the
   cluster is.
 - `getVoteAccounts` This will tell you how much active stake your validator

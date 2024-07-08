@@ -14,7 +14,7 @@ keywords:
   - blockhash
 ---
 
-The [commitment](https://nexis.com/docs/terminology#commitment) metric gives
+The [commitment](https://nexis.network/docs/terminology#commitment) metric gives
 clients a standard measure of the network confirmation for the block. Clients
 can then use this information to derive their own measures of commitment.
 

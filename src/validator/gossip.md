@@ -6,7 +6,7 @@ pagination_label: Validator Gossip Service
 ---
 
 The Gossip Service acts as a gateway to nodes in the
-[control plane](https://nexis.com/docs/terminology#control-plane). Validators
+[control plane](https://nexis.network/docs/terminology#control-plane). Validators
 use the service to ensure information is available to all other nodes in a
 cluster. The service broadcasts information using a
 [gossip protocol](https://en.wikipedia.org/wiki/Gossip_protocol).

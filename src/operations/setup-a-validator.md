@@ -60,7 +60,7 @@ Once you have successfully installed the cli, the next step is to change your
 config so that it is making requests to the `testnet` cluster:
 
 ```
-nexis config set --url https://api.testnet.nexis.com
+nexis config set --url https://api.testnet.nexis.network
 ```
 
 To verify that your config has change run:
@@ -69,7 +69,7 @@ To verify that your config has change run:
 nexis config get
 ```
 
-You should see a line that says: `RPC URL: https://api.testnet.nexis.com`
+You should see a line that says: `RPC URL: https://api.testnet.nexis.network`
 
 ## Create Keys
 
@@ -421,9 +421,9 @@ exec nexis-validator \
     --ledger /mnt/ledger \
     --rpc-port 8899 \
     --dynamic-port-range 8000-8020 \
-    --entrypoint entrypoint.testnet.nexis.com:8001 \
-    --entrypoint entrypoint2.testnet.nexis.com:8001 \
-    --entrypoint entrypoint3.testnet.nexis.com:8001 \
+    --entrypoint entrypoint.testnet.nexis.network:8001 \
+    --entrypoint entrypoint2.testnet.nexis.network:8001 \
+    --entrypoint entrypoint3.testnet.nexis.network:8001 \
     --expected-genesis-hash 4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY \
     --wal-recovery-mode skip_any_corrupted_record \
     --limit-ledger-size

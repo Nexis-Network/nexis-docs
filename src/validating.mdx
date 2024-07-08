@@ -92,7 +92,7 @@ Anyone can start a validator node, however it will not generate rewards before i
 The Nexis Network cli includes `get` and `set` configuration commands to automatically set the `--url` argument for cli commands. For example:
 
 ```bash {{ title: '' }}
-nexis config set --url https://testnet.nexscan.io/rpc
+nexis config set --url https://api.testnet.nexis.network
 ```
 
 While this section demonstrates how to connect to the Devnet cluster, the steps are similar for the other Nexis Network Clusters.
@@ -110,7 +110,7 @@ nexis transaction-count
 Try running following command to join the gossip network and view all the other nodes in the cluster:
 
 ```bash {{ title: '' }}
-nexis-gossip spy --entrypoint bootstrap.testnet.nexscan.io:8001
+nexis-gossip spy --entrypoint bootstrap.testnet.nexis.network:8001
 # Press ^C to exit
 ```
 

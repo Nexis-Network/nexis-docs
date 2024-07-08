@@ -40,9 +40,9 @@ exec nexis-validator \
     --rpc-bind-address 0.0.0.0 \
     --private-rpc \
     --dynamic-port-range 8000-8020 \
-    --entrypoint entrypoint.testnet.nexis.com:8001 \
-    --entrypoint entrypoint2.testnet.nexis.com:8001 \
-    --entrypoint entrypoint3.testnet.nexis.com:8001 \
+    --entrypoint entrypoint.testnet.nexis.network:8001 \
+    --entrypoint entrypoint2.testnet.nexis.network:8001 \
+    --entrypoint entrypoint3.testnet.nexis.network:8001 \
     --expected-genesis-hash 4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY \
     --wal-recovery-mode skip_any_corrupted_record \
     --limit-ledger-size
@@ -74,13 +74,13 @@ Keep in mind, you will still need to customize these commands to operate as an R
 
 As the number of populated accounts on the cluster grows, account-data RPC
 requests that scan the entire account set -- like
-[`getProgramAccounts`](https://nexis.com/docs/rpc/http/getprogramaccounts) and
-[SPL-token-specific requests](https://nexis.com/docs/rpc/http/gettokenaccountsbydelegate) --
+[`getProgramAccounts`](https://nexis.network/docs/rpc/http/getprogramaccounts) and
+[SPL-token-specific requests](https://nexis.network/docs/rpc/http/gettokenaccountsbydelegate) --
 may perform poorly. If your validator needs to support any of these requests,
 you can use the `--account-index` parameter to activate one or more in-memory
 account indexes that significantly improve RPC performance by indexing accounts
 by the key field. Currently supports the following parameter values:
 
-- `program-id`: each account indexed by its owning program; used by [getProgramAccounts](https://nexis.com/docs/rpc/http/getprogramaccounts)
-- `spl-token-mint`: each SPL token account indexed by its token Mint; used by [getTokenAccountsByDelegate](https://nexis.com/docs/rpc/http/gettokenaccountsbydelegate), and [getTokenLargestAccounts](https://nexis.com/docs/rpc/http/gettokenlargestaccounts)
-- `spl-token-owner`: each SPL token account indexed by the token-owner address; used by [getTokenAccountsByOwner](https://nexis.com/docs/rpc/http/gettokenaccountsbyowner), and [getProgramAccounts](https://nexis.com/docs/rpc/http/getprogramaccounts) requests that include an spl-token-owner filter.
+- `program-id`: each account indexed by its owning program; used by [getProgramAccounts](https://nexis.network/docs/rpc/http/getprogramaccounts)
+- `spl-token-mint`: each SPL token account indexed by its token Mint; used by [getTokenAccountsByDelegate](https://nexis.network/docs/rpc/http/gettokenaccountsbydelegate), and [getTokenLargestAccounts](https://nexis.network/docs/rpc/http/gettokenlargestaccounts)
+- `spl-token-owner`: each SPL token account indexed by the token-owner address; used by [getTokenAccountsByOwner](https://nexis.network/docs/rpc/http/gettokenaccountsbyowner), and [getProgramAccounts](https://nexis.network/docs/rpc/http/getprogramaccounts) requests that include an spl-token-owner filter.

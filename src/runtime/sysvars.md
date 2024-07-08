@@ -5,7 +5,7 @@ sidebar_label: Sysvar Cluster Data
 ---
 
 Nexis Network exposes a variety of cluster state data to programs via
-[`sysvar`](https://nexis.com/docs/terminology#sysvar) accounts. These accounts
+[`sysvar`](https://nexis.network/docs/terminology#sysvar) accounts. These accounts
 are populated at known addresses published along with the account layouts in the
 [`nexis-program` crate](https://docs.rs/nexis-program/VERSION_FOR_DOCS_RS/nexis_program/sysvar/index.html),
 and outlined below.
@@ -79,7 +79,7 @@ epoch, and estimated wall-clock Unix timestamp. It is updated every slot.
 The EpochSchedule sysvar contains epoch scheduling constants that are set in
 genesis, and enables calculating the number of slots in a given epoch, the epoch
 for a given slot, etc. (Note: the epoch schedule is distinct from the
-[`leader schedule`](https://nexis.com/docs/terminology#leader-schedule))
+[`leader schedule`](https://nexis.network/docs/terminology#leader-schedule))
 
 - Address: `SysvarEpochSchedu1e111111111111111111111111`
 - Layout:

@@ -11,7 +11,7 @@ The nexis cli includes `get` and `set` configuration commands to automatically
 set the `--url` argument for cli commands. For example:
 
 ```bash
-nexis config set --url https://api.devnet.nexis.com
+nexis config set --url https://api.devnet.nexis.network
 ```
 
 While this section demonstrates how to connect to the Devnet cluster, the steps
@@ -26,7 +26,7 @@ to your machine by fetching the transaction count:
 nexis transaction-count
 ```
 
-View the [metrics dashboard](https://metrics.nexis.com:3000/d/monitor/cluster-telemetry) for more
+View the [metrics dashboard](https://metrics.nexis.network:3000/d/monitor/cluster-telemetry) for more
 detail on cluster activity.
 
 ## Enabling CUDA
@@ -189,8 +189,8 @@ You should see the following output:
 
 ```text
 Config File: /home/nexis/.config/nexis/cli/config.yml
-RPC URL: https://api.devnet.nexis.com
-WebSocket URL: ws://api.devnet.nexis.com/ (computed)
+RPC URL: https://api.devnet.nexis.network
+WebSocket URL: ws://api.devnet.nexis.network/ (computed)
 Keypair Path: /home/nexis/validator-keypair.json
 Commitment: confirmed
 ```
@@ -218,7 +218,7 @@ Or to see in finer detail:
 nexis balance --lamports
 ```
 
-Read more about the [difference between NZT and lamports here](https://nexis.com/docs/intro#what-are-sols).
+Read more about the [difference between NZT and lamports here](https://nexis.network/docs/intro#what-are-sols).
 
 ## Create Authorized Withdrawer Account
 
@@ -281,7 +281,7 @@ nexis-validator \
   --identity ~/validator-keypair.json \
   --vote-account ~/vote-account-keypair.json \
   --rpc-port 8899 \
-  --entrypoint entrypoint.devnet.nexis.com:8001 \
+  --entrypoint entrypoint.devnet.nexis.network:8001 \
   --limit-ledger-size \
   --log ~/nexis-validator.log
 ```
@@ -318,7 +318,7 @@ the validator to ports 11000-11020.
 ### Limiting ledger size to conserve disk space
 
 The `--limit-ledger-size` parameter allows you to specify how many ledger
-[shreds](https://nexis.com/docs/terminology#shred) your node retains on disk. If you do not
+[shreds](https://nexis.network/docs/terminology#shred) your node retains on disk. If you do not
 include this parameter, the validator will keep all received ledger data
 until it runs out of disk space. Otherwise, the validator will continually
 purge the oldest data once to stay under the specified `--limit-ledger-size`
@@ -472,13 +472,13 @@ command-line arguments and restart the validator.
 
 As the number of populated accounts on the cluster grows, account-data RPC
 requests that scan the entire account set -- like
-[`getProgramAccounts`](https://nexis.com/docs/rpc/http/getprogramaccounts) and
-[SPL-token-specific requests](https://nexis.com/docs/rpc/http/gettokenaccountsbydelegate) --
+[`getProgramAccounts`](https://nexis.network/docs/rpc/http/getprogramaccounts) and
+[SPL-token-specific requests](https://nexis.network/docs/rpc/http/gettokenaccountsbydelegate) --
 may perform poorly. If your validator needs to support any of these requests,
 you can use the `--account-index` parameter to activate one or more in-memory
 account indexes that significantly improve RPC performance by indexing accounts
 by the key field. Currently supports the following parameter values:
 
-- `program-id`: each account indexed by its owning program; used by [getProgramAccounts](https://nexis.com/docs/rpc/http/getprogramaccounts)
-- `spl-token-mint`: each SPL token account indexed by its token Mint; used by [getTokenAccountsByDelegate](https://nexis.com/docs/rpc/http/gettokenaccountsbydelegate), and [getTokenLargestAccounts](https://nexis.com/docs/rpc/http/gettokenlargestaccounts)
-- `spl-token-owner`: each SPL token account indexed by the token-owner address; used by [getTokenAccountsByOwner](https://nexis.com/docs/rpc/http/gettokenaccountsbyowner), and [getProgramAccounts](https://nexis.com/docs/rpc/http/getprogramaccounts) requests that include an spl-token-owner filter.
+- `program-id`: each account indexed by its owning program; used by [getProgramAccounts](https://nexis.network/docs/rpc/http/getprogramaccounts)
+- `spl-token-mint`: each SPL token account indexed by its token Mint; used by [getTokenAccountsByDelegate](https://nexis.network/docs/rpc/http/gettokenaccountsbydelegate), and [getTokenLargestAccounts](https://nexis.network/docs/rpc/http/gettokenlargestaccounts)
+- `spl-token-owner`: each SPL token account indexed by the token-owner address; used by [getTokenAccountsByOwner](https://nexis.network/docs/rpc/http/gettokenaccountsbyowner), and [getProgramAccounts](https://nexis.network/docs/rpc/http/getprogramaccounts) requests that include an spl-token-owner filter.

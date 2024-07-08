@@ -9,7 +9,7 @@ proofs that are tailored to work with Pedersen commitments and ElGamal
 encryption over the elliptic curve
 [curve25519](https://www.rfc-editor.org/rfc/rfc7748#section-4.1). The program
 was originally designed to verify the zero-knowledge proofs that are required
-for the [SPL Token 2022](https://spl.nexis.com/token-2022) program. However,
+for the [SPL Token 2022](https://spl.nexis.network/token-2022) program. However,
 the zero-knowledge proofs in the proof program can be used in more general
 contexts outside of SPL Token 2022 as well.
 
